@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Users, ChevronRight } from "lucide-react";
+import { Building2, Users, Ticket, CalendarOff, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 
@@ -18,6 +18,18 @@ export default function SettingsPage() {
       description: "Zarzadzaj kontami uzytkownikow i uprawnieniami",
       href: "/settings/users",
       icon: Users,
+    },
+    {
+      title: "Typy karnetow",
+      description: "Zarzadzaj szablonami karnetow dla studia",
+      href: "/settings/pass-types",
+      icon: Ticket,
+    },
+    {
+      title: "Dni wolne",
+      description: "Swieta i dni zamkniecia studia",
+      href: "/settings/holidays",
+      icon: CalendarOff,
     },
   ];
 

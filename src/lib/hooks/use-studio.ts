@@ -42,47 +42,52 @@ export function useStudioProvider(profile: Profile | null) {
         return;
       }
 
-      let query = supabase.from("studios").select("*").eq("is_active", true);
+      try {
+        let query = supabase.from("studios").select("*").eq("is_active", true);
 
-      if (profile.role !== "super_admin") {
-        const { data: members } = await supabase
-          .from("studio_members")
-          .select("studio_id")
-          .eq("profile_id", profile.id);
+        if (profile.role !== "super_admin") {
+          const { data: members } = await supabase
+            .from("studio_members")
+            .select("studio_id")
+            .eq("profile_id", profile.id);
 
-        const studioIds = members?.map((m) => m.studio_id) ?? [];
-        if (studioIds.length === 0) {
-          setStudios([]);
-          setLoading(false);
-          return;
+          const studioIds = members?.map((m) => m.studio_id) ?? [];
+          if (studioIds.length === 0) {
+            setStudios([]);
+            setLoading(false);
+            return;
+          }
+          query = query.in("id", studioIds);
         }
-        query = query.in("id", studioIds);
-      }
 
-      const { data } = await query.order("name");
-      const studioList = data ?? [];
-      setStudios(studioList);
+        const { data } = await query.order("name");
+        const studioList = data ?? [];
+        setStudios(studioList);
 
-      // Restore from cookie or default
-      const savedStudioId = localStorage.getItem(STUDIO_COOKIE_KEY);
-      const savedStudio = studioList.find((s) => s.id === savedStudioId);
+        // Restore from cookie or default
+        const savedStudioId = localStorage.getItem(STUDIO_COOKIE_KEY);
+        const savedStudio = studioList.find((s) => s.id === savedStudioId);
 
-      if (savedStudio) {
-        setActiveStudio(savedStudio);
-      } else if (profile.default_studio_id) {
-        const defaultStudio = studioList.find(
-          (s) => s.id === profile.default_studio_id
-        );
-        if (defaultStudio) {
-          setActiveStudio(defaultStudio);
-          localStorage.setItem(STUDIO_COOKIE_KEY, defaultStudio.id);
+        if (savedStudio) {
+          setActiveStudio(savedStudio);
+        } else if (profile.default_studio_id) {
+          const defaultStudio = studioList.find(
+            (s) => s.id === profile.default_studio_id
+          );
+          if (defaultStudio) {
+            setActiveStudio(defaultStudio);
+            localStorage.setItem(STUDIO_COOKIE_KEY, defaultStudio.id);
+          }
+        } else if (studioList.length === 1) {
+          setActiveStudio(studioList[0]);
+          localStorage.setItem(STUDIO_COOKIE_KEY, studioList[0].id);
         }
-      } else if (studioList.length === 1) {
-        setActiveStudio(studioList[0]);
-        localStorage.setItem(STUDIO_COOKIE_KEY, studioList[0].id);
+      } catch {
+        // Studio loading failed, continue with empty state
+        setStudios([]);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     loadStudios();

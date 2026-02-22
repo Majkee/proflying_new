@@ -9,6 +9,7 @@ import { PaymentForm } from "@/components/payments/payment-form";
 export default function RecordPaymentPage() {
   const searchParams = useSearchParams();
   const preselectedStudentId = searchParams.get("student") ?? undefined;
+  const preselectedPassId = searchParams.get("pass") ?? undefined;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -20,7 +21,7 @@ export default function RecordPaymentPage() {
           </Button>
         </Link>
       </div>
-      <PaymentForm preselectedStudentId={preselectedStudentId} />
+      <PaymentForm preselectedStudentId={preselectedStudentId} preselectedPassId={preselectedPassId} />
     </div>
   );
 }

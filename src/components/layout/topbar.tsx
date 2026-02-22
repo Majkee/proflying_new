@@ -2,6 +2,7 @@
 
 import { Menu } from "lucide-react";
 import { StudioSwitcher } from "./studio-switcher";
+import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
       <div className="flex-1">
         <StudioSwitcher />
       </div>
+      <NotificationBell />
       <UserMenu />
     </header>
   );

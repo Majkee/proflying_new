@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, Calendar } from "lucide-react";
+import { Clock, Calendar, Users } from "lucide-react";
 import { useGroups } from "@/lib/hooks/use-groups";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +78,10 @@ export default function SchedulePage() {
                               {group.instructor.full_name}
                             </p>
                           )}
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                            <Users className="h-3 w-3" />
+                            {group.member_count ?? 0}/{group.capacity}
+                          </div>
                         </CardContent>
                       </Card>
                     </Link>
@@ -121,6 +125,10 @@ export default function SchedulePage() {
                                 {group.instructor.full_name}
                               </p>
                             )}
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                              <Users className="h-3.5 w-3.5" />
+                              {group.member_count ?? 0}/{group.capacity}
+                            </div>
                           </CardContent>
                         </Card>
                       </Link>

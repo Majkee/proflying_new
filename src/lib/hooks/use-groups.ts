@@ -21,9 +21,10 @@ export function useGroups(options?: { dayOfWeek?: number; instructorId?: string 
     setLoading(true);
     let query = supabase
       .from("groups")
-      .select("*, instructor:instructors(id, full_name)")
+      .select("*, instructor:instructors(id, full_name), group_memberships(count)")
       .eq("studio_id", activeStudio.id)
       .eq("is_active", true)
+      .eq("group_memberships.is_active", true)
       .order("day_of_week")
       .order("start_time");
 
@@ -35,7 +36,11 @@ export function useGroups(options?: { dayOfWeek?: number; instructorId?: string 
     }
 
     const { data } = await query;
-    setGroups((data as Group[]) ?? []);
+    const groups = (data ?? []).map((g: Record<string, unknown>) => ({
+      ...g,
+      member_count: (g.group_memberships as { count: number }[])?.[0]?.count ?? 0,
+    })) as Group[];
+    setGroups(groups);
     setLoading(false);
   }, [activeStudio?.id, options?.dayOfWeek, options?.instructorId]);
 

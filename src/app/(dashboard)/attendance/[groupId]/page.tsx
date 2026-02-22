@@ -68,6 +68,7 @@ export default function AttendanceGroupPage({
         groupId={group.id}
         groupName={group.name}
         groupCode={group.code}
+        dayOfWeek={group.day_of_week}
       />
     </div>
   );

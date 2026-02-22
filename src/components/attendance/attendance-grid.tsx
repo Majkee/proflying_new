@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { StudentRow } from "./student-row";
 import { NoteDialog } from "./note-dialog";
 import { SubstituteDialog } from "./substitute-dialog";
+import { QuickPaymentDialog } from "./quick-payment-dialog";
 import { formatRelativeDate, toDateString } from "@/lib/utils/dates";
 import type { Student, AttendanceStatus } from "@/lib/types/database";
 
@@ -18,10 +19,18 @@ interface AttendanceGridProps {
   groupId: string;
   groupName: string;
   groupCode: string;
+  dayOfWeek: number;
 }
 
-export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGridProps) {
-  const [date, setDate] = useState(new Date());
+function getClosestPastWeekday(dayOfWeek: number): Date {
+  const today = new Date();
+  const currentDay = today.getDay();
+  const diff = (currentDay - dayOfWeek + 7) % 7;
+  return diff === 0 ? today : subDays(today, diff);
+}
+
+export function AttendanceGrid({ groupId, groupName, groupCode, dayOfWeek }: AttendanceGridProps) {
+  const [date, setDate] = useState(() => getClosestPastWeekday(dayOfWeek));
   const [members, setMembers] = useState<(Student & { membership_id: string })[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const dateStr = toDateString(date);
@@ -33,6 +42,12 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
     name: "",
   });
   const [substituteOpen, setSubstituteOpen] = useState(false);
+  const [paymentDialog, setPaymentDialog] = useState<{ open: boolean; studentId: string; name: string }>({
+    open: false,
+    studentId: "",
+    name: "",
+  });
+  const [passMap, setPassMap] = useState<Map<string, string>>(new Map());
   const supabase = createClient();
 
   useEffect(() => {
@@ -53,6 +68,29 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
         }) ?? []) as (Student & { membership_id: string })[];
 
       setMembers(memberList);
+
+      // Fetch active passes for all students in this group
+      const studentIds = memberList.map((m) => m.id);
+      if (studentIds.length > 0) {
+        const { data: passes } = await supabase
+          .from("passes")
+          .select("id, student_id, valid_until, is_active")
+          .in("student_id", studentIds)
+          .eq("is_active", true)
+          .order("valid_until", { ascending: false });
+
+        const map = new Map<string, string>();
+        if (passes) {
+          for (const pass of passes) {
+            // Keep only the latest valid_until per student (already sorted desc)
+            if (!map.has(pass.student_id)) {
+              map.set(pass.student_id, pass.valid_until);
+            }
+          }
+        }
+        setPassMap(map);
+      }
+
       setLoadingMembers(false);
     }
 
@@ -74,12 +112,31 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
     [records]
   );
 
+  const getPassStatus = useCallback(
+    (studentId: string): "expired" | "expiring" | null => {
+      const validUntil = passMap.get(studentId);
+      if (!validUntil) return "expired";
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiryDate = new Date(validUntil);
+      if (expiryDate < today) return "expired";
+      const sevenDaysFromNow = addDays(today, 7);
+      if (expiryDate <= sevenDaysFromNow) return "expiring";
+      return null;
+    },
+    [passMap]
+  );
+
   const handleToggle = (studentId: string, status: AttendanceStatus) => {
     toggleAttendance(studentId, status);
   };
 
   const handleNoteClick = (studentId: string, name: string) => {
     setNoteDialog({ open: true, studentId, name });
+  };
+
+  const handlePaymentClick = (studentId: string, name: string) => {
+    setPaymentDialog({ open: true, studentId, name });
   };
 
   const handleNoteSave = (note: string, status: "excused" | null) => {
@@ -144,14 +201,14 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
     <div>
       {/* Date navigation */}
       <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" size="icon" onClick={() => setDate(subDays(date, 1))}>
+        <Button variant="ghost" size="icon" onClick={() => setDate(subDays(date, 7))}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="text-center">
           <p className="font-medium">{formatRelativeDate(date)}</p>
           <p className="text-sm text-muted-foreground">{format(date, "dd.MM.yyyy")}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setDate(addDays(date, 1))}>
+        <Button variant="ghost" size="icon" onClick={() => setDate(addDays(date, 7))}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
@@ -201,8 +258,11 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
                 name={member.full_name}
                 status={getStudentStatus(member.id)}
                 note={getStudentNote(member.id)}
+                passStatus={getPassStatus(member.id)}
+                passValidUntil={passMap.get(member.id) ?? null}
                 onToggle={handleToggle}
                 onNoteClick={handleNoteClick}
+                onPaymentClick={handlePaymentClick}
               />
             ))}
             {/* Substitute entries */}
@@ -243,6 +303,14 @@ export function AttendanceGrid({ groupId, groupName, groupCode }: AttendanceGrid
         open={substituteOpen}
         onClose={() => setSubstituteOpen(false)}
         onAdd={handleAddSubstitute}
+      />
+
+      <QuickPaymentDialog
+        open={paymentDialog.open}
+        onClose={() => setPaymentDialog({ ...paymentDialog, open: false })}
+        studentId={paymentDialog.studentId}
+        studentName={paymentDialog.name}
+        onSuccess={() => {}}
       />
     </div>
   );

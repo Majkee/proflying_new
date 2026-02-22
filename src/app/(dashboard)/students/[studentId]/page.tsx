@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Edit, Phone, Mail, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, CalendarDays, Edit, Phone, Mail, Plus, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -127,7 +127,7 @@ export default function StudentDetailPage({
             Powrot
           </Button>
         </div>
-        <StudentForm student={student} onSuccess={() => { setEditing(false); window.location.reload(); }} />
+        <StudentForm student={student} onSuccess={() => { setEditing(false); setLoading(true); loadData(); }} />
       </div>
     );
   }
@@ -168,6 +168,12 @@ export default function StudentDetailPage({
             <Mail className="h-3.5 w-3.5" />
             {student.email}
           </a>
+        )}
+        {student.date_of_birth && (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {new Date(student.date_of_birth + "T00:00:00").toLocaleDateString("pl-PL")}
+          </span>
         )}
       </div>
 

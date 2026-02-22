@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ClipboardCheck,
   Users,
   Layers,
   CreditCard,
   AlertTriangle,
-  Clock,
+  Cake,
+  Banknote,
+  CheckCircle2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
@@ -18,14 +19,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { LevelBadge } from "@/components/shared/badges";
-import { formatTime } from "@/lib/utils/dates";
-import type { Group } from "@/lib/types/database";
+import { DashboardCalendar } from "@/components/dashboard/dashboard-calendar";
+import type { Group, Student } from "@/lib/types/database";
+
 
 export default function DashboardPage() {
   const { activeStudio } = useStudio();
   const { profile } = useUser();
-  const [todayGroups, setTodayGroups] = useState<Group[]>([]);
+  const [unpaidStudents, setUnpaidStudents] = useState<
+    { studentId: string; studentName: string; groupName: string; groupCode: string; validUntil: string | null }[]
+  >([]);
+  const [birthdayStudents, setBirthdayStudents] = useState<Pick<Student, "id" | "full_name" | "date_of_birth">[]>([]);
   const [stats, setStats] = useState({
     activeStudents: 0,
     activeGroups: 0,
@@ -42,63 +46,144 @@ export default function DashboardPage() {
         return;
       }
 
-      const today = new Date().getDay();
+      try {
+        const today = new Date().getDay();
+        const todayStr = new Date().toISOString().split("T")[0];
 
-      // Fetch today's groups
-      const { data: groups } = await supabase
-        .from("groups")
-        .select("*, instructor:instructors(id, full_name)")
-        .eq("studio_id", activeStudio.id)
-        .eq("day_of_week", today)
-        .eq("is_active", true)
-        .order("start_time");
-
-      setTodayGroups((groups as Group[]) ?? []);
-
-      // Fetch stats
-      const [studentsRes, groupsRes] = await Promise.all([
-        supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("studio_id", activeStudio.id)
-          .eq("is_active", true),
-        supabase
+        // Fetch today's groups
+        const { data: groups } = await supabase
           .from("groups")
-          .select("id", { count: "exact", head: true })
+          .select("id, code, name")
           .eq("studio_id", activeStudio.id)
-          .eq("is_active", true),
-      ]);
+          .eq("day_of_week", today)
+          .eq("is_active", true);
 
-      let monthRevenue = 0;
-      let overdueCount = 0;
+        const todayGroups = (groups ?? []) as Pick<Group, "id" | "code" | "name">[];
 
-      if (profile?.role === "super_admin" || profile?.role === "manager") {
+        // Fetch members of today's groups and their pass status
+        if (todayGroups.length > 0) {
+          const groupIds = todayGroups.map((g) => g.id);
+          const { data: memberships } = await supabase
+            .from("group_memberships")
+            .select("group_id, student:students(id, full_name)")
+            .in("group_id", groupIds)
+            .eq("is_active", true);
+
+          const memberList = (memberships ?? []).map((m: Record<string, unknown>) => {
+            const student = m.student as { id: string; full_name: string };
+            return { groupId: m.group_id as string, studentId: student.id, studentName: student.full_name };
+          });
+
+          if (memberList.length > 0) {
+            const studentIds = [...new Set(memberList.map((m) => m.studentId))];
+            const { data: passes } = await supabase
+              .from("passes")
+              .select("student_id, valid_until")
+              .in("student_id", studentIds)
+              .eq("is_active", true)
+              .order("valid_until", { ascending: false });
+
+            // Build map: studentId -> latest valid_until
+            const passMap = new Map<string, string>();
+            if (passes) {
+              for (const p of passes) {
+                if (!passMap.has(p.student_id)) {
+                  passMap.set(p.student_id, p.valid_until);
+                }
+              }
+            }
+
+            // Build group lookup
+            const groupMap = new Map(todayGroups.map((g) => [g.id, g]));
+
+            // Find students with no pass or expired pass
+            const unpaid: typeof unpaidStudents = [];
+            const seen = new Set<string>();
+            for (const m of memberList) {
+              if (seen.has(m.studentId)) continue;
+              const validUntil = passMap.get(m.studentId) ?? null;
+              const isExpired = !validUntil || validUntil < todayStr;
+              if (isExpired) {
+                const group = groupMap.get(m.groupId);
+                unpaid.push({
+                  studentId: m.studentId,
+                  studentName: m.studentName,
+                  groupName: group?.name ?? "",
+                  groupCode: group?.code ?? "",
+                  validUntil,
+                });
+                seen.add(m.studentId);
+              }
+            }
+            setUnpaidStudents(unpaid);
+          }
+        }
+
+        // Fetch birthday students
+        const { data: allStudents } = await supabase
+          .from("students")
+          .select("id, full_name, date_of_birth")
+          .eq("studio_id", activeStudio.id)
+          .eq("is_active", true)
+          .not("date_of_birth", "is", null);
+
         const now = new Date();
-        const [revenueRes, overdueRes] = await Promise.all([
-          supabase.rpc("get_monthly_revenue", {
-            p_studio_id: activeStudio.id,
-            p_year: now.getFullYear(),
-            p_month: now.getMonth() + 1,
-          }),
-          supabase.rpc("get_overdue_students", {
-            p_studio_id: activeStudio.id,
-          }),
+        const todayMonth = now.getMonth() + 1;
+        const todayDay = now.getDate();
+        const todayBirthdays = (allStudents ?? []).filter((s) => {
+          if (!s.date_of_birth) return false;
+          const parts = s.date_of_birth.split("-");
+          return parseInt(parts[1]) === todayMonth && parseInt(parts[2]) === todayDay;
+        });
+        setBirthdayStudents(todayBirthdays);
+
+        // Fetch stats
+        const [studentsRes, groupsRes] = await Promise.all([
+          supabase
+            .from("students")
+            .select("id", { count: "exact", head: true })
+            .eq("studio_id", activeStudio.id)
+            .eq("is_active", true),
+          supabase
+            .from("groups")
+            .select("id", { count: "exact", head: true })
+            .eq("studio_id", activeStudio.id)
+            .eq("is_active", true),
         ]);
 
-        if (revenueRes.data && revenueRes.data.length > 0) {
-          monthRevenue = revenueRes.data[0].total_amount;
+        let monthRevenue = 0;
+        let overdueCount = 0;
+
+        if (profile?.role === "super_admin" || profile?.role === "manager") {
+          const now = new Date();
+          const [revenueRes, overdueRes] = await Promise.all([
+            supabase.rpc("get_monthly_revenue", {
+              p_studio_id: activeStudio.id,
+              p_year: now.getFullYear(),
+              p_month: now.getMonth() + 1,
+            }),
+            supabase.rpc("get_overdue_students", {
+              p_studio_id: activeStudio.id,
+            }),
+          ]);
+
+          if (revenueRes.data && revenueRes.data.length > 0) {
+            monthRevenue = revenueRes.data[0].total_amount;
+          }
+          overdueCount = overdueRes.data?.length ?? 0;
         }
-        overdueCount = overdueRes.data?.length ?? 0;
+
+        setStats({
+          activeStudents: studentsRes.count ?? 0,
+          activeGroups: groupsRes.count ?? 0,
+          monthRevenue,
+          overdueCount,
+        });
+      } catch {
+        // Dashboard loading failed, show whatever we have
+      } finally {
+        setLoading(false);
       }
-
-      setStats({
-        activeStudents: studentsRes.count ?? 0,
-        activeGroups: groupsRes.count ?? 0,
-        monthRevenue,
-        overdueCount,
-      });
-
-      setLoading(false);
     }
 
     loadDashboard();
@@ -132,6 +217,26 @@ export default function DashboardPage() {
               Sprawdz
             </Button>
           </Link>
+        </div>
+      )}
+
+      {/* Birthday banner */}
+      {birthdayStudents.length > 0 && (
+        <div className="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex items-center gap-3">
+          <Cake className="h-5 w-5 text-pink-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-pink-800">
+              Dzisiaj urodziny:{" "}
+              {birthdayStudents.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/students/${s.id}`} className="underline hover:text-pink-900">
+                    {s.full_name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          </div>
         </div>
       )}
 
@@ -187,52 +292,59 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Today's classes */}
+      {/* Students to pay today */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Dzisiejsze zajecia</h2>
-        {todayGroups.length === 0 ? (
+        <h2 className="text-lg font-semibold mb-4">Do oplaty dzisiaj</h2>
+        {unpaidStudents.length === 0 ? (
           <EmptyState
-            icon={Clock}
-            title="Brak zajec dzisiaj"
-            description="Na dzisiaj nie ma zaplanowanych zajec"
+            icon={CheckCircle2}
+            title="Wszystko oplacone"
+            description="Wszystkie kursantki z dzisiejszych zajec maja aktywne karnety"
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {todayGroups.map((group) => (
-              <Card key={group.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
+          <Card className="border-red-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-red-600" />
+                Brak karnetu ({unpaidStudents.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y">
+                {unpaidStudents.map((s) => (
+                  <div key={s.studentId} className="flex items-center justify-between py-3">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-xs">
-                          {group.code}
+                      <p className="font-medium">{s.studentName}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {s.groupCode}
                         </Badge>
-                        <LevelBadge level={group.level} />
+                        <span>
+                          {s.validUntil
+                            ? `Wygasl: ${new Date(s.validUntil).toLocaleDateString("pl-PL")}`
+                            : "Brak karnetu"}
+                        </span>
                       </div>
-                      <h3 className="font-medium">{group.name}</h3>
                     </div>
+                    <Link href={`/students/${s.studentId}?tab=passes`}>
+                      <Button size="sm" variant="outline">
+                        Oplac
+                      </Button>
+                    </Link>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <Clock className="h-3.5 w-3.5" />
-                    {formatTime(group.start_time)} - {formatTime(group.end_time)}
-                  </div>
-                  {group.instructor && (
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {group.instructor.full_name}
-                    </p>
-                  )}
-                  <Link href={`/attendance/${group.id}`}>
-                    <Button className="w-full" size="sm">
-                      <ClipboardCheck className="mr-2 h-4 w-4" />
-                      Sprawdz obecnosc
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      {/* Calendar */}
+      {activeStudio && (
+        <div className="mt-8">
+          <DashboardCalendar studioId={activeStudio.id} />
+        </div>
+      )}
     </div>
   );
 }
