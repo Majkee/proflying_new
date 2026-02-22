@@ -87,10 +87,15 @@ export default function GroupDetailPage({
       <PageHeader
         title={group.name}
         action={
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edytuj
-          </Button>
+          <div className="flex gap-2">
+            <Link href={`/attendance/${group.id}`}>
+              <Button>Sprawdz obecnosc</Button>
+            </Link>
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edytuj
+            </Button>
+          </div>
         }
       />
 
@@ -110,15 +115,7 @@ export default function GroupDetailPage({
         </p>
       )}
 
-      <div className="space-y-6">
-        <GroupRoster groupId={group.id} />
-
-        <div className="flex gap-2">
-          <Link href={`/attendance/${group.id}`}>
-            <Button>Sprawdz obecnosc</Button>
-          </Link>
-        </div>
-      </div>
+      <GroupRoster groupId={group.id} />
     </div>
   );
 }

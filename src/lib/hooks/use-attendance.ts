@@ -17,13 +17,18 @@ export function useAttendance(sessionId: string | null) {
     }
 
     setLoading(true);
-    const { data } = await supabase
-      .from("attendance")
-      .select("*, student:students(id, full_name)")
-      .eq("session_id", sessionId);
+    try {
+      const { data } = await supabase
+        .from("attendance")
+        .select("*, student:students(id, full_name)")
+        .eq("session_id", sessionId);
 
-    setRecords((data as Attendance[]) ?? []);
-    setLoading(false);
+      setRecords((data as Attendance[]) ?? []);
+    } catch {
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -96,15 +101,20 @@ export function useEnsureSession(groupId: string, date: string) {
         return;
       }
 
-      const { data, error } = await supabase.rpc("ensure_session", {
-        p_group_id: groupId,
-        p_date: date,
-      });
+      try {
+        const { data, error } = await supabase.rpc("ensure_session", {
+          p_group_id: groupId,
+          p_date: date,
+        });
 
-      if (!error && data) {
-        setSessionId(data);
+        if (!error && data) {
+          setSessionId(data);
+        }
+      } catch {
+        // Session creation failed
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     ensureSession();

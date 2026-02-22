@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
 import { useUser } from "@/lib/hooks/use-user";
@@ -16,14 +17,16 @@ import type { Student, Pass } from "@/lib/types/database";
 
 interface PaymentFormProps {
   preselectedStudentId?: string;
+  preselectedPassId?: string;
 }
 
-export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
+export function PaymentForm({ preselectedStudentId, preselectedPassId }: PaymentFormProps) {
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [passes, setPasses] = useState<Pass[]>([]);
-  const [selectedPassId, setSelectedPassId] = useState("");
+  const [passes, setPasses] = useState<(Pass & { template?: { id: string; name: string } | null })[]>([]);
+  const [loadingPasses, setLoadingPasses] = useState(false);
+  const [selectedPassId, setSelectedPassId] = useState(preselectedPassId ?? "");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<"cash" | "transfer">("cash");
   const [notes, setNotes] = useState("");
@@ -75,13 +78,26 @@ export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
         setPasses([]);
         return;
       }
+      setLoadingPasses(true);
       const { data } = await supabase
         .from("passes")
-        .select("*")
+        .select("*, template:pass_templates!template_id(id, name)")
         .eq("student_id", selectedStudent.id)
         .eq("is_active", true)
         .order("valid_until", { ascending: false });
-      setPasses(data ?? []);
+      const passData = (data ?? []) as (Pass & { template?: { id: string; name: string } | null })[];
+      setPasses(passData);
+      setLoadingPasses(false);
+
+      // Auto-select preselected pass or first available pass
+      if (preselectedPassId && passData.some((p) => p.id === preselectedPassId)) {
+        setSelectedPassId(preselectedPassId);
+        const pass = passData.find((p) => p.id === preselectedPassId);
+        if (pass && !amount) setAmount(String(pass.price_amount));
+      } else if (passData.length === 1) {
+        setSelectedPassId(passData[0].id);
+        if (!amount) setAmount(String(passData[0].price_amount));
+      }
     }
     loadPasses();
   }, [selectedStudent?.id]);
@@ -90,11 +106,31 @@ export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
     setSelectedStudent(student);
     setSearch("");
     setStudents([]);
+    setSelectedPassId("");
+    setAmount("");
+  };
+
+  const handlePassChange = (passId: string) => {
+    setSelectedPassId(passId);
+    const pass = passes.find((p) => p.id === passId);
+    if (pass) setAmount(String(pass.price_amount));
+  };
+
+  const PASS_TYPE_LABELS: Record<string, string> = {
+    single_entry: "Jednorazowy",
+    monthly_1x: "1x/tydzien",
+    monthly_2x: "2x/tydzien",
+    custom: "Indywidualny",
+  };
+
+  const getPassLabel = (p: Pass & { template?: { id: string; name: string } | null }) => {
+    const label = p.template?.name ?? PASS_TYPE_LABELS[p.pass_type] ?? p.pass_type;
+    return `${label} - ${p.valid_from} do ${p.valid_until} (${p.price_amount} zl)`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeStudio || !selectedStudent || !amount) return;
+    if (!activeStudio || !selectedStudent || !amount || !selectedPassId) return;
 
     setError("");
     setSaving(true);
@@ -102,7 +138,7 @@ export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
     const { error: err } = await supabase.from("payments").insert({
       studio_id: activeStudio.id,
       student_id: selectedStudent.id,
-      pass_id: selectedPassId || null,
+      pass_id: selectedPassId,
       amount: parseInt(amount),
       method,
       recorded_by: profile?.id,
@@ -176,22 +212,38 @@ export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
             </div>
           )}
 
-          {/* Pass selection */}
-          {passes.length > 0 && (
+          {/* Pass selection - required */}
+          {selectedStudent && (
             <div className="space-y-2">
-              <Label>Powiaz z karnetem</Label>
-              <Select value={selectedPassId} onValueChange={setSelectedPassId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Opcjonalnie..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {passes.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.pass_type === "monthly_1x" ? "1x/tyg" : p.pass_type === "monthly_2x" ? "2x/tyg" : p.pass_type} - {p.valid_from} do {p.valid_until}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Karnet *</Label>
+              {loadingPasses ? (
+                <div className="h-10 flex items-center text-sm text-muted-foreground">Ladowanie...</div>
+              ) : passes.length > 0 ? (
+                <Select value={selectedPassId} onValueChange={handlePassChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz karnet..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {passes.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {getPassLabel(p)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                  <p className="font-medium text-yellow-800">Brak aktywnego karnetu</p>
+                  <p className="text-yellow-700 mt-1">
+                    Najpierw utworz karnet dla tej kursantki.
+                  </p>
+                  <Link href={`/students/${selectedStudent.id}?tab=passes`}>
+                    <Button variant="outline" size="sm" className="mt-2">
+                      Przejdz do karnetow
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -236,7 +288,7 @@ export function PaymentForm({ preselectedStudentId }: PaymentFormProps) {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={saving || !selectedStudent || !amount}>
+            <Button type="submit" disabled={saving || !selectedStudent || !amount || !selectedPassId}>
               {saving ? "Zapisywanie..." : "Zapisz platnosc"}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()}>

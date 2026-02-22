@@ -43,3 +43,7 @@ export function toDateString(date: Date): string {
 export function getCurrentDayOfWeek(): number {
   return new Date().getDay();
 }
+
+export function formatMonthYear(date: Date): string {
+  return format(date, "LLLL yyyy", { locale: pl });
+}

@@ -67,6 +67,7 @@ export interface Student {
   full_name: string;
   email: string | null;
   phone: string | null;
+  date_of_birth: string | null;
   notes: string | null;
   is_active: boolean;
   joined_at: string;
@@ -111,26 +112,50 @@ export interface Attendance {
   student?: Student;
 }
 
+export interface PublicHoliday {
+  id: string;
+  holiday_date: string;
+  name: string;
+  created_at: string;
+}
+
+export interface PassTemplate {
+  id: string;
+  studio_id: string;
+  name: string;
+  duration_days: number;
+  entries_total: number | null;
+  default_price: number;
+  is_active: boolean;
+  sort_order: number;
+  auto_renew_default: boolean;
+  created_at: string;
+}
+
 export interface Pass {
   id: string;
   studio_id: string;
   student_id: string;
   pass_type: PassType;
+  template_id?: string;
   price_amount: number;
   valid_from: string;
   valid_until: string;
   entries_total: number | null;
   entries_used: number;
   is_active: boolean;
+  auto_renew: boolean;
   notes: string | null;
   created_at: string;
+  // Joined fields
+  template?: PassTemplate;
 }
 
 export interface Payment {
   id: string;
   studio_id: string;
   student_id: string;
-  pass_id: string | null;
+  pass_id: string;
   amount: number;
   method: PaymentMethod;
   paid_at: string;

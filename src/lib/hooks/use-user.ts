@@ -13,33 +13,39 @@ export function useUser() {
 
   useEffect(() => {
     async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
 
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        setProfile(data);
+        if (user) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          setProfile(data);
+        }
+      } catch {
+        // Auth check failed (network error, stale token, etc.)
+        setUser(null);
+        setProfile(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          const { data } = await supabase
+          supabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
-            .single();
-          setProfile(data);
+            .single()
+            .then(({ data }) => setProfile(data ?? null));
         } else {
           setProfile(null);
         }

@@ -19,19 +19,24 @@ export function usePayments(studentId?: string) {
     }
 
     setLoading(true);
-    let query = supabase
-      .from("payments")
-      .select("*, student:students(id, full_name), pass:passes(id, pass_type, valid_from, valid_until)")
-      .eq("studio_id", activeStudio.id)
-      .order("paid_at", { ascending: false });
+    try {
+      let query = supabase
+        .from("payments")
+        .select("*, student:students(id, full_name), pass:passes(id, pass_type, valid_from, valid_until)")
+        .eq("studio_id", activeStudio.id)
+        .order("paid_at", { ascending: false });
 
-    if (studentId) {
-      query = query.eq("student_id", studentId);
+      if (studentId) {
+        query = query.eq("student_id", studentId);
+      }
+
+      const { data } = await query;
+      setPayments((data as Payment[]) ?? []);
+    } catch {
+      setPayments([]);
+    } finally {
+      setLoading(false);
     }
-
-    const { data } = await query;
-    setPayments((data as Payment[]) ?? []);
-    setLoading(false);
   }, [activeStudio?.id, studentId]);
 
   useEffect(() => {
@@ -59,16 +64,21 @@ export function useMonthlyRevenue(year: number, month: number) {
         return;
       }
 
-      const { data } = await supabase.rpc("get_monthly_revenue", {
-        p_studio_id: activeStudio.id,
-        p_year: year,
-        p_month: month,
-      });
+      try {
+        const { data } = await supabase.rpc("get_monthly_revenue", {
+          p_studio_id: activeStudio.id,
+          p_year: year,
+          p_month: month,
+        });
 
-      if (data && data.length > 0) {
-        setRevenue(data[0]);
+        if (data && data.length > 0) {
+          setRevenue(data[0]);
+        }
+      } catch {
+        // Revenue fetch failed
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchRevenue();
@@ -91,19 +101,24 @@ export function usePasses(studentId?: string) {
     }
 
     setLoading(true);
-    let query = supabase
-      .from("passes")
-      .select("*")
-      .eq("studio_id", activeStudio.id)
-      .order("valid_until", { ascending: false });
+    try {
+      let query = supabase
+        .from("passes")
+        .select("*")
+        .eq("studio_id", activeStudio.id)
+        .order("valid_until", { ascending: false });
 
-    if (studentId) {
-      query = query.eq("student_id", studentId);
+      if (studentId) {
+        query = query.eq("student_id", studentId);
+      }
+
+      const { data } = await query;
+      setPasses(data ?? []);
+    } catch {
+      setPasses([]);
+    } finally {
+      setLoading(false);
     }
-
-    const { data } = await query;
-    setPasses(data ?? []);
-    setLoading(false);
   }, [activeStudio?.id, studentId]);
 
   useEffect(() => {
@@ -129,12 +144,17 @@ export function useOverdueStudents() {
         return;
       }
 
-      const { data } = await supabase.rpc("get_overdue_students", {
-        p_studio_id: activeStudio.id,
-      });
+      try {
+        const { data } = await supabase.rpc("get_overdue_students", {
+          p_studio_id: activeStudio.id,
+        });
 
-      setOverdueStudents(data ?? []);
-      setLoading(false);
+        setOverdueStudents(data ?? []);
+      } catch {
+        setOverdueStudents([]);
+      } finally {
+        setLoading(false);
+      }
     }
 
     fetchOverdue();

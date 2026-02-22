@@ -41,7 +41,7 @@ export function OverdueList({ students }: OverdueListProps) {
                     : "Brak karnetu"}
                 </p>
               </div>
-              <Link href={`/payments/record?student=${s.student_id}`}>
+              <Link href={`/students/${s.student_id}?tab=passes`}>
                 <Button size="sm" variant="outline">
                   Oplac
                 </Button>

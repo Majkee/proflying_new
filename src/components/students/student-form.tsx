@@ -20,6 +20,7 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
   const [fullName, setFullName] = useState(student?.full_name ?? "");
   const [email, setEmail] = useState(student?.email ?? "");
   const [phone, setPhone] = useState(student?.phone ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(student?.date_of_birth ?? "");
   const [notes, setNotes] = useState(student?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -36,22 +37,26 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
     setError("");
     setSaving(true);
 
-    const payload = {
+    const data = {
       full_name: fullName.trim(),
       email: email.trim() || null,
       phone: phone.trim() || null,
+      date_of_birth: dateOfBirth || null,
       notes: notes.trim() || null,
-      studio_id: activeStudio.id,
     };
 
     let result;
     if (isEdit) {
       result = await supabase
         .from("students")
-        .update(payload)
+        .update(data)
         .eq("id", student.id);
     } else {
-      result = await supabase.from("students").insert(payload).select().single();
+      result = await supabase
+        .from("students")
+        .insert({ ...data, studio_id: activeStudio.id })
+        .select()
+        .single();
     }
 
     if (result.error) {
@@ -106,6 +111,15 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
                 placeholder="email@example.pl"
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="dateOfBirth">Data urodzenia</Label>
+            <Input
+              id="dateOfBirth"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Notatki</Label>

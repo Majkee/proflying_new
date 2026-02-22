@@ -62,7 +62,7 @@ export function GroupList({ groups, showDay = true }: GroupListProps) {
                       )}
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
                         <Users className="h-3.5 w-3.5" />
-                        {group.capacity} miejsc
+                        {group.member_count ?? 0}/{group.capacity}
                       </div>
                     </CardContent>
                   </Card>
