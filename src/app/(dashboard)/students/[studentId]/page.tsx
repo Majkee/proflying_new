@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Edit, Phone, Mail } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, Edit, Phone, Mail, Plus, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/hooks/use-user";
 import { Button } from "@/components/ui/button";
@@ -12,69 +13,91 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/page-header";
 import { LevelBadge } from "@/components/shared/badges";
 import { StudentForm } from "@/components/students/student-form";
+import { PassForm } from "@/components/payments/pass-form";
 import type { Student, Group, GroupMembership, Pass, Payment } from "@/lib/types/database";
 
 export default function StudentDetailPage({
   params,
 }: {
-  params: { studentId: string };
+  params: Promise<{ studentId: string }>;
 }) {
+  const { studentId } = use(params);
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") ?? "groups";
   const [student, setStudent] = useState<Student | null>(null);
   const [groups, setGroups] = useState<(GroupMembership & { group: Group })[]>([]);
-  const [passes, setPasses] = useState<Pass[]>([]);
+  const [passes, setPasses] = useState<(Pass & { template?: { name: string } })[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showPassForm, setShowPassForm] = useState(false);
+  const [renewingPass, setRenewingPass] = useState<Pass | undefined>(undefined);
   const { profile } = useUser();
   const supabase = createClient();
   const isManagerPlus = profile?.role === "super_admin" || profile?.role === "manager";
 
-  useEffect(() => {
-    async function loadStudent() {
-      const { data } = await supabase
-        .from("students")
-        .select("*")
-        .eq("id", params.studentId)
-        .single();
+  const loadData = async () => {
+    const { data } = await supabase
+      .from("students")
+      .select("*")
+      .eq("id", studentId)
+      .single();
 
-      setStudent(data);
+    setStudent(data);
 
-      if (data) {
-        // Load groups
-        const { data: membershipData } = await supabase
-          .from("group_memberships")
-          .select("*, group:groups(*, instructor:instructors(id, full_name))")
-          .eq("student_id", data.id)
-          .eq("is_active", true);
+    if (data) {
+      // Load groups
+      const { data: membershipData } = await supabase
+        .from("group_memberships")
+        .select("*, group:groups(*, instructor:instructors(id, full_name))")
+        .eq("student_id", data.id)
+        .eq("is_active", true);
 
-        setGroups((membershipData as (GroupMembership & { group: Group })[]) ?? []);
+      setGroups((membershipData as (GroupMembership & { group: Group })[]) ?? []);
 
-        // Load passes
-        const { data: passData } = await supabase
-          .from("passes")
+      // Load passes with template info
+      const { data: passData } = await supabase
+        .from("passes")
+        .select("*, template:pass_templates(name)")
+        .eq("student_id", data.id)
+        .order("valid_until", { ascending: false });
+
+      setPasses(passData ?? []);
+
+      // Load payments (manager+ only)
+      if (isManagerPlus) {
+        const { data: paymentData } = await supabase
+          .from("payments")
           .select("*")
           .eq("student_id", data.id)
-          .order("valid_until", { ascending: false });
+          .order("paid_at", { ascending: false });
 
-        setPasses(passData ?? []);
-
-        // Load payments (manager+ only)
-        if (isManagerPlus) {
-          const { data: paymentData } = await supabase
-            .from("payments")
-            .select("*")
-            .eq("student_id", data.id)
-            .order("paid_at", { ascending: false });
-
-          setPayments(paymentData ?? []);
-        }
+        setPayments(paymentData ?? []);
       }
-
-      setLoading(false);
     }
 
-    loadStudent();
-  }, [params.studentId, isManagerPlus]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [studentId, isManagerPlus]);
+
+  const handlePassCreated = () => {
+    setShowPassForm(false);
+    setRenewingPass(undefined);
+    loadData();
+  };
+
+  const openNewPass = () => {
+    setRenewingPass(undefined);
+    setShowPassForm(true);
+  };
+
+  const openRenewPass = (pass: Pass) => {
+    setRenewingPass(pass);
+    setShowPassForm(true);
+  };
 
   if (loading) {
     return (
@@ -89,7 +112,7 @@ export default function StudentDetailPage({
       <div className="text-center py-12">
         <p className="text-muted-foreground">Nie znaleziono kursantki</p>
         <Link href="/students">
-          <Button variant="link" className="mt-2">Wróc do listy</Button>
+          <Button variant="link" className="mt-2">Wroc do listy</Button>
         </Link>
       </div>
     );
@@ -108,6 +131,8 @@ export default function StudentDetailPage({
       </div>
     );
   }
+
+  const latestPass = passes[0];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -146,7 +171,7 @@ export default function StudentDetailPage({
         )}
       </div>
 
-      <Tabs defaultValue="groups">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="groups">Grupy</TabsTrigger>
           <TabsTrigger value="passes">Karnet</TabsTrigger>
@@ -178,43 +203,78 @@ export default function StudentDetailPage({
         </TabsContent>
 
         <TabsContent value="passes">
-          {passes.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Brak karnetow</p>
-          ) : (
-            <div className="grid gap-3 mt-2">
-              {passes.map((pass) => {
-                const isExpired = new Date(pass.valid_until) < new Date();
-                return (
-                  <Card key={pass.id} className={isExpired ? "opacity-60" : ""}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant={isExpired ? "outline" : "default"}>
-                              {pass.pass_type === "monthly_1x" ? "1x/tydzien" :
-                               pass.pass_type === "monthly_2x" ? "2x/tydzien" :
-                               pass.pass_type === "single_entry" ? "Jednorazowy" : "Indywidualny"}
-                            </Badge>
-                            {isExpired && <Badge variant="destructive">Wygasl</Badge>}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {pass.valid_from} - {pass.valid_until}
-                          </p>
-                          {pass.entries_total && (
-                            <p className="text-sm text-muted-foreground">
-                              Wejscia: {pass.entries_used}/{pass.entries_total}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">{pass.price_amount} zl</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+          {showPassForm ? (
+            <div className="mt-2">
+              <PassForm
+                studentId={student.id}
+                previousPass={renewingPass}
+                onSuccess={handlePassCreated}
+                onCancel={() => { setShowPassForm(false); setRenewingPass(undefined); }}
+              />
             </div>
+          ) : (
+            <>
+              <div className="flex gap-2 mt-2 mb-4">
+                <Button size="sm" onClick={openNewPass}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  Nowy karnet
+                </Button>
+                {latestPass && (
+                  <Button size="sm" variant="outline" onClick={() => openRenewPass(latestPass)}>
+                    <RefreshCw className="mr-1 h-4 w-4" />
+                    Odnow karnet
+                  </Button>
+                )}
+              </div>
+
+              {passes.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">Brak karnetow</p>
+              ) : (
+                <div className="grid gap-3">
+                  {passes.map((pass) => {
+                    const isExpired = new Date(pass.valid_until) < new Date();
+                    const templateName = pass.template?.name;
+                    return (
+                      <Card key={pass.id} className={isExpired ? "opacity-60" : ""}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant={isExpired ? "outline" : "default"}>
+                                  {templateName ??
+                                    (pass.pass_type === "monthly_1x" ? "1x/tydzien" :
+                                     pass.pass_type === "monthly_2x" ? "2x/tydzien" :
+                                     pass.pass_type === "single_entry" ? "Jednorazowy" : "Indywidualny")}
+                                </Badge>
+                                {isExpired && <Badge variant="destructive">Wygasl</Badge>}
+                                {!isExpired && pass.is_active && <Badge variant="secondary">Aktywny</Badge>}
+                                {pass.auto_renew && <Badge variant="outline">Auto-odnowienie</Badge>}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {pass.valid_from} - {pass.valid_until}
+                              </p>
+                              {pass.entries_total && (
+                                <p className="text-sm text-muted-foreground">
+                                  Wejscia: {pass.entries_used}/{pass.entries_total}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right flex flex-col items-end gap-2">
+                              <p className="font-semibold">{pass.price_amount} zl</p>
+                              {isManagerPlus && !isExpired && pass.is_active && (
+                                <Link href={`/payments/record?student=${student.id}&pass=${pass.id}`}>
+                                  <Button size="sm" variant="outline">Zapisz platnosc</Button>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 

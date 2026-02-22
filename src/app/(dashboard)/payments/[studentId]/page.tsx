@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useStudent } from "@/lib/hooks/use-students";
@@ -11,10 +12,11 @@ import { PaymentHistory } from "@/components/payments/payment-history";
 export default function StudentPaymentsPage({
   params,
 }: {
-  params: { studentId: string };
+  params: Promise<{ studentId: string }>;
 }) {
-  const { student, loading: studentLoading } = useStudent(params.studentId);
-  const { payments, loading: paymentsLoading } = usePayments(params.studentId);
+  const { studentId } = use(params);
+  const { student, loading: studentLoading } = useStudent(studentId);
+  const { payments, loading: paymentsLoading } = usePayments(studentId);
 
   if (studentLoading || paymentsLoading) {
     return (
@@ -38,7 +40,7 @@ export default function StudentPaymentsPage({
       <PageHeader
         title={`Platnosci - ${student?.full_name ?? ""}`}
         action={
-          <Link href={`/payments/record?student=${params.studentId}`}>
+          <Link href={`/payments/record?student=${studentId}`}>
             <Button size="sm">Zapisz platnosc</Button>
           </Link>
         }

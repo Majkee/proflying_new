@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -11,8 +11,9 @@ import type { Group } from "@/lib/types/database";
 export default function AttendanceGroupPage({
   params,
 }: {
-  params: { groupId: string };
+  params: Promise<{ groupId: string }>;
 }) {
+  const { groupId } = use(params);
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -22,7 +23,7 @@ export default function AttendanceGroupPage({
       const { data } = await supabase
         .from("groups")
         .select("*, instructor:instructors(id, full_name)")
-        .eq("id", params.groupId)
+        .eq("id", groupId)
         .single();
 
       setGroup(data as Group | null);
@@ -30,7 +31,7 @@ export default function AttendanceGroupPage({
     }
 
     loadGroup();
-  }, [params.groupId]);
+  }, [groupId]);
 
   if (loading) {
     return (
