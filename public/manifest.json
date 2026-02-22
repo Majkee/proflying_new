@@ -1,0 +1,16 @@
+{
+  "name": "ProFlying Academy",
+  "short_name": "ProFlying",
+  "description": "System zarzadzania szkola pole dance",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#9333ea",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
