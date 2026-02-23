@@ -3,7 +3,17 @@ export type StudioRole = "manager" | "instructor";
 export type AttendanceStatus = "present" | "absent" | "excused";
 export type PassType = "single_entry" | "monthly_1x" | "monthly_2x" | "custom";
 export type PaymentMethod = "cash" | "transfer";
-export type Level = "kids" | "teens" | "zero" | "podstawa" | "podstawa_plus" | "sredni" | "exotic" | "priv";
+export type Level = string;
+
+export interface GroupLevel {
+  id: string;
+  value: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
 
 export interface Studio {
   id: string;

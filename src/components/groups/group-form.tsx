@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DAYS_OF_WEEK } from "@/lib/constants/days";
-import { LEVELS } from "@/lib/constants/levels";
+import { useGroupLevels } from "@/lib/hooks/use-group-levels";
 import type { Group, Instructor } from "@/lib/types/database";
 
 interface GroupFormProps {
@@ -28,6 +28,7 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
   const [instructorId, setInstructorId] = useState(group?.instructor_id ?? "");
   const [capacity, setCapacity] = useState(String(group?.capacity ?? 10));
   const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const { levels: groupLevels } = useGroupLevels();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const { activeStudio } = useStudio();
@@ -133,7 +134,7 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LEVELS.map((l) => (
+                  {groupLevels.map((l) => (
                     <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
                   ))}
                 </SelectContent>
