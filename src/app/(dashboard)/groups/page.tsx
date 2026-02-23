@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { GroupList } from "@/components/groups/group-list";
 
 export default function GroupsPage() {
-  const { groups, loading } = useGroups();
+  const { groups, loading, refetch } = useGroups();
 
   return (
     <div>
@@ -44,7 +44,7 @@ export default function GroupsPage() {
           }
         />
       ) : (
-        <GroupList groups={groups} />
+        <GroupList groups={groups} onDeactivated={refetch} />
       )}
     </div>
   );
