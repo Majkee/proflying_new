@@ -72,6 +72,7 @@ export function NotificationBell() {
     }
 
     setNotifications(result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStudio?.id]);
 
   useEffect(() => {

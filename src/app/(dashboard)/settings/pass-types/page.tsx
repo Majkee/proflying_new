@@ -20,6 +20,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { PassTemplate } from "@/lib/types/database";
 
 export default function PassTypesSettingsPage() {
@@ -35,7 +36,6 @@ export default function PassTypesSettingsPage() {
   const [sortOrder, setSortOrder] = useState("0");
   const [autoRenewDefault, setAutoRenewDefault] = useState(true);
   const [saving, setSaving] = useState(false);
-  const supabase = createClient();
 
   const openCreate = () => {
     setEditingTemplate(null);
@@ -76,6 +76,7 @@ export default function PassTypesSettingsPage() {
       sort_order: parseInt(sortOrder) || 0,
     };
 
+    const supabase = createClient();
     if (editingTemplate) {
       await supabase.from("pass_templates").update(payload).eq("id", editingTemplate.id);
     } else {
@@ -110,9 +111,7 @@ export default function PassTypesSettingsPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <LoadingSpinner size="sm" />
       ) : templates.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">Brak szablonow karnetow. Dodaj pierwszy typ karnetu.</p>
       ) : (

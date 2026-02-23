@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { PublicHoliday } from "@/lib/types/database";
 
 const DAY_NAMES = ["Niedziela", "Poniedzialek", "Wtorek", "Sroda", "Czwartek", "Piatek", "Sobota"];
@@ -32,10 +33,10 @@ export default function HolidaysSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const supabase = createClient();
 
   const loadHolidays = useCallback(async () => {
     setLoading(true);
+    const supabase = createClient();
     const startDate = `${filterYear}-01-01`;
     const endDate = `${filterYear}-12-31`;
     const { data } = await supabase
@@ -62,6 +63,7 @@ export default function HolidaysSettingsPage() {
     if (!holidayDate || !holidayName.trim()) return;
     setSaving(true);
 
+    const supabase = createClient();
     await supabase.from("public_holidays").insert({
       holiday_date: holidayDate,
       name: holidayName.trim(),
@@ -74,6 +76,7 @@ export default function HolidaysSettingsPage() {
 
   const handleDelete = async (id: string) => {
     setDeleting(true);
+    const supabase = createClient();
     await supabase.from("public_holidays").delete().eq("id", id);
     setDeleting(false);
     setDeleteConfirmId(null);
@@ -131,9 +134,7 @@ export default function HolidaysSettingsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <LoadingSpinner size="sm" />
       ) : holidays.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4">Brak dni wolnych w {filterYear} roku.</p>
       ) : (

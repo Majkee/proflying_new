@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/utils/logger";
 import type { Profile } from "@/lib/types/database";
 import type { User } from "@supabase/supabase-js";
 
@@ -9,26 +10,31 @@ export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+
     async function getUser() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
         if (user) {
-          const { data } = await supabase
+          const { data, error: profileError } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", user.id)
             .single();
+
+          if (profileError) throw profileError;
           setProfile(data);
         }
-      } catch {
-        // Auth check failed (network error, stale token, etc.)
+      } catch (err) {
+        logger.error("Failed to load user profile", err);
         setUser(null);
         setProfile(null);
+        setError(err instanceof Error ? err : new Error("Blad uwierzytelniania"));
       } finally {
         setLoading(false);
       }
@@ -56,11 +62,12 @@ export function useUser() {
   }, []);
 
   const signOut = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
     window.location.href = "/login";
   };
 
-  return { user, profile, loading, signOut };
+  return { user, profile, loading, error, signOut };
 }

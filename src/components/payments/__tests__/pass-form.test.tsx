@@ -41,8 +41,6 @@ vi.mock("@/lib/hooks/use-studio", () => ({
     studios: [testStudio],
     loading: false,
     switchStudio: vi.fn(),
-    isAllStudios: false,
-    setAllStudios: vi.fn(),
   }),
 }));
 

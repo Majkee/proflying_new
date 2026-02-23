@@ -8,6 +8,7 @@ let mockSelectFn: ReturnType<typeof vi.fn>;
 let mockEqFns: Array<[string, unknown]>;
 let mockOrderFn: ReturnType<typeof vi.fn>;
 let resolvedData: unknown;
+let resolvedError: unknown;
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
@@ -16,7 +17,7 @@ vi.mock("@/lib/supabase/client", () => ({
         select: (...args: unknown[]) => { mockSelectFn(...args); return chain; },
         eq: (...args: unknown[]) => { mockEqFns.push(args as [string, unknown]); return chain; },
         order: (...args: unknown[]) => { mockOrderFn(...args); return chain; },
-        then: (resolve: (v: unknown) => void) => resolve({ data: resolvedData, error: null }),
+        then: (resolve: (v: unknown) => void) => resolve({ data: resolvedData, error: resolvedError }),
       };
       return chain;
     }),
@@ -26,7 +27,7 @@ vi.mock("@/lib/supabase/client", () => ({
 function createWrapper(activeStudio = testStudio) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(StudioContext.Provider, {
-      value: { activeStudio, studios: [testStudio], loading: false, switchStudio: vi.fn(), isAllStudios: false, setAllStudios: vi.fn() },
+      value: { activeStudio, studios: [testStudio], loading: false, switchStudio: vi.fn() },
     }, children);
   };
 }
@@ -34,7 +35,7 @@ function createWrapper(activeStudio = testStudio) {
 function createNullWrapper() {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(StudioContext.Provider, {
-      value: { activeStudio: null, studios: [], loading: false, switchStudio: vi.fn(), isAllStudios: false, setAllStudios: vi.fn() },
+      value: { activeStudio: null, studios: [], loading: false, switchStudio: vi.fn() },
     }, children);
   };
 }
@@ -44,6 +45,7 @@ beforeEach(() => {
   mockEqFns = [];
   mockOrderFn = vi.fn();
   resolvedData = [testPassTemplate, testPassTemplate2];
+  resolvedError = null;
 });
 
 describe("usePassTemplates", () => {
@@ -76,6 +78,13 @@ describe("usePassTemplates", () => {
     const { result } = renderHook(() => usePassTemplates(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(typeof result.current.refetch).toBe("function");
+  });
+
+  it("exposes error state", async () => {
+    const { usePassTemplates } = await import("../use-pass-templates");
+    const { result } = renderHook(() => usePassTemplates(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
   });
 });
 
@@ -110,5 +119,12 @@ describe("useAllPassTemplates", () => {
     const { result } = renderHook(() => useAllPassTemplates(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(typeof result.current.refetch).toBe("function");
+  });
+
+  it("exposes error state", async () => {
+    const { useAllPassTemplates } = await import("../use-pass-templates");
+    const { result } = renderHook(() => useAllPassTemplates(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
   });
 });

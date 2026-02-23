@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
+import { GroupSchema } from "@/lib/validations/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,12 +32,13 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { activeStudio } = useStudio();
   const router = useRouter();
-  const supabase = createClient();
   const isEdit = !!group;
 
   useEffect(() => {
+    const supabase = createClient();
     async function loadInstructors() {
       if (!activeStudio) return;
       const { data } = await supabase
@@ -47,6 +50,7 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
       setInstructors(data ?? []);
     }
     loadInstructors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStudio?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,20 +58,37 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
     if (!activeStudio) return;
 
     setError("");
-    setSaving(true);
+    setFieldErrors({});
 
-    const payload = {
+    const parsed = GroupSchema.safeParse({
       code: code.trim(),
       name: name.trim(),
-      day_of_week: parseInt(dayOfWeek),
+      day_of_week: dayOfWeek,
       start_time: startTime,
       end_time: endTime,
       level,
       instructor_id: instructorId,
-      capacity: parseInt(capacity),
+      capacity,
+    });
+
+    if (!parsed.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key && !errors[key]) errors[key] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      ...parsed.data,
       studio_id: activeStudio.id,
     };
 
+    const supabase = createClient();
     let result;
     if (isEdit) {
       result = await supabase.from("groups").update(payload).eq("id", group.id);
@@ -77,9 +98,12 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
 
     if (result.error) {
       setError(result.error.message.includes("unique") ? "Kod grupy juz istnieje w tym studiu" : "Wystapil blad podczas zapisywania");
+      toast.error("Nie udalo sie zapisac grupy");
       setSaving(false);
       return;
     }
+
+    toast.success(isEdit ? "Grupa zaktualizowana" : "Grupa dodana");
 
     if (onSuccess) {
       onSuccess();
@@ -100,10 +124,12 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
             <div className="space-y-2">
               <Label htmlFor="code">Kod grupy *</Label>
               <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} required placeholder="np. PO1" />
+              {fieldErrors.code && <p className="text-sm text-destructive">{fieldErrors.code}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Nazwa *</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Nazwa grupy" />
+              {fieldErrors.name && <p className="text-sm text-destructive">{fieldErrors.name}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -121,10 +147,12 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
             <div className="space-y-2">
               <Label htmlFor="startTime">Godzina rozpoczecia</Label>
               <Input id="startTime" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              {fieldErrors.start_time && <p className="text-sm text-destructive">{fieldErrors.start_time}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="endTime">Godzina zakonczenia</Label>
               <Input id="endTime" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              {fieldErrors.end_time && <p className="text-sm text-destructive">{fieldErrors.end_time}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -149,10 +177,12 @@ export function GroupForm({ group, onSuccess }: GroupFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {fieldErrors.instructor_id && <p className="text-sm text-destructive">{fieldErrors.instructor_id}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="capacity">Pojemnosc</Label>
               <Input id="capacity" type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              {fieldErrors.capacity && <p className="text-sm text-destructive">{fieldErrors.capacity}</p>}
             </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}

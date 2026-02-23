@@ -33,6 +33,7 @@ import { pl } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { formatMonthYear, formatTime } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { WeekView } from "./week-view";
 import type { PublicHoliday, Student, Group } from "@/lib/types/database";
 
@@ -65,10 +66,10 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [expandedDate, setExpandedDate] = useState<Date | null>(null);
   const [initialLoaded, setInitialLoaded] = useState(false);
-  const supabase = createClient();
 
   const loadHolidays = useCallback(
     async (rangeStart: Date, rangeEnd: Date) => {
+      const supabase = createClient();
       const startStr = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-${String(rangeStart.getDate()).padStart(2, "0")}`;
       const endStr = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, "0")}-${String(rangeEnd.getDate()).padStart(2, "0")}`;
 
@@ -81,10 +82,12 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
 
       setHolidays(data ?? []);
     },
-    [supabase]
+    []
   );
 
   useEffect(() => {
+    const supabase = createClient();
+
     async function loadStaticData() {
       const [studentsRes, groupsRes] = await Promise.all([
         supabase
@@ -229,7 +232,7 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
     return (
       <div className="rounded-lg border bg-card shadow-sm">
         <div className="flex items-center justify-center py-24">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <LoadingSpinner size="sm" />
         </div>
       </div>
     );

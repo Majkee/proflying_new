@@ -26,8 +26,6 @@ describe("StudioSwitcher", () => {
       studios: [testStudio],
       loading: false,
       switchStudio: vi.fn(),
-      isAllStudios: false,
-      setAllStudios: vi.fn(),
     };
     mockProfile = testInstructorProfile;
 
@@ -41,29 +39,11 @@ describe("StudioSwitcher", () => {
       studios: [testStudio, testStudio2],
       loading: false,
       switchStudio: vi.fn(),
-      isAllStudios: false,
-      setAllStudios: vi.fn(),
     };
     mockProfile = testProfile;
 
     render(<StudioSwitcher />);
-    // Should show the active studio name in the trigger
     expect(screen.getByText("ProFlying Mokotow")).toBeInTheDocument();
-  });
-
-  it("shows 'Wszystkie studia' text when isAllStudios is true", () => {
-    mockStudioContext = {
-      activeStudio: null,
-      studios: [testStudio, testStudio2],
-      loading: false,
-      switchStudio: vi.fn(),
-      isAllStudios: true,
-      setAllStudios: vi.fn(),
-    };
-    mockProfile = testProfile;
-
-    render(<StudioSwitcher />);
-    expect(screen.getByText("Wszystkie studia")).toBeInTheDocument();
   });
 
   it("shows 'Brak studia' when no active studio and single studio list for non-admin", () => {
@@ -72,8 +52,6 @@ describe("StudioSwitcher", () => {
       studios: [],
       loading: false,
       switchStudio: vi.fn(),
-      isAllStudios: false,
-      setAllStudios: vi.fn(),
     };
     mockProfile = testInstructorProfile;
 
@@ -87,8 +65,6 @@ describe("StudioSwitcher", () => {
       studios: [testStudio, testStudio2],
       loading: false,
       switchStudio: vi.fn(),
-      isAllStudios: false,
-      setAllStudios: vi.fn(),
     };
     mockProfile = testProfile;
 

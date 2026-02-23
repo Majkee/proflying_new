@@ -37,7 +37,6 @@ export function QuickPaymentDialog({ open, onClose, studentId, studentName, onSu
   const [success, setSuccess] = useState(false);
   const { activeStudio } = useStudio();
   const { profile } = useUser();
-  const supabase = createClient();
 
   useEffect(() => {
     if (!open || !studentId) return;
@@ -52,6 +51,7 @@ export function QuickPaymentDialog({ open, onClose, studentId, studentName, onSu
 
     async function loadPasses() {
       setLoadingPasses(true);
+      const supabase = createClient();
       const { data } = await supabase
         .from("passes")
         .select("*, template:pass_templates!template_id(id, name)")
@@ -97,6 +97,7 @@ export function QuickPaymentDialog({ open, onClose, studentId, studentName, onSu
     setError("");
     setSaving(true);
 
+    const supabase = createClient();
     const { error: err } = await supabase.from("payments").insert({
       studio_id: activeStudio.id,
       student_id: studentId,

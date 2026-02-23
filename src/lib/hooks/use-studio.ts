@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/utils/logger";
 import type { Studio, Profile } from "@/lib/types/database";
 
 const STUDIO_COOKIE_KEY = "proflying_active_studio";
@@ -11,8 +12,6 @@ interface StudioContextType {
   studios: Studio[];
   loading: boolean;
   switchStudio: (studioId: string) => void;
-  isAllStudios: boolean;
-  setAllStudios: () => void;
 }
 
 export const StudioContext = createContext<StudioContextType>({
@@ -20,8 +19,6 @@ export const StudioContext = createContext<StudioContextType>({
   studios: [],
   loading: true,
   switchStudio: () => {},
-  isAllStudios: false,
-  setAllStudios: () => {},
 });
 
 export function useStudio() {
@@ -32,10 +29,10 @@ export function useStudioProvider(profile: Profile | null) {
   const [activeStudio, setActiveStudio] = useState<Studio | null>(null);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAllStudios, setIsAllStudios] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
+
     async function loadStudios() {
       if (!profile) {
         setLoading(false);
@@ -64,26 +61,24 @@ export function useStudioProvider(profile: Profile | null) {
         const studioList = data ?? [];
         setStudios(studioList);
 
-        // Restore from cookie or default
+        // Restore from cookie or default to Śrem
         const savedStudioId = localStorage.getItem(STUDIO_COOKIE_KEY);
         const savedStudio = studioList.find((s) => s.id === savedStudioId);
 
         if (savedStudio) {
           setActiveStudio(savedStudio);
-        } else if (profile.default_studio_id) {
-          const defaultStudio = studioList.find(
-            (s) => s.id === profile.default_studio_id
+        } else {
+          const sremStudio = studioList.find((s) =>
+            s.name.toLowerCase().includes("śrem") || s.name.toLowerCase().includes("srem")
           );
-          if (defaultStudio) {
-            setActiveStudio(defaultStudio);
-            localStorage.setItem(STUDIO_COOKIE_KEY, defaultStudio.id);
+          const fallback = sremStudio ?? studioList[0] ?? null;
+          if (fallback) {
+            setActiveStudio(fallback);
+            localStorage.setItem(STUDIO_COOKIE_KEY, fallback.id);
           }
-        } else if (studioList.length === 1) {
-          setActiveStudio(studioList[0]);
-          localStorage.setItem(STUDIO_COOKIE_KEY, studioList[0].id);
         }
-      } catch {
-        // Studio loading failed, continue with empty state
+      } catch (err) {
+        logger.error("Failed to load studios", err);
         setStudios([]);
       } finally {
         setLoading(false);
@@ -98,25 +93,16 @@ export function useStudioProvider(profile: Profile | null) {
       const studio = studios.find((s) => s.id === studioId);
       if (studio) {
         setActiveStudio(studio);
-        setIsAllStudios(false);
         localStorage.setItem(STUDIO_COOKIE_KEY, studioId);
       }
     },
     [studios]
   );
 
-  const setAllStudios = useCallback(() => {
-    setActiveStudio(null);
-    setIsAllStudios(true);
-    localStorage.removeItem(STUDIO_COOKIE_KEY);
-  }, []);
-
   return {
     activeStudio,
     studios,
     loading,
     switchStudio,
-    isAllStudios,
-    setAllStudios,
   };
 }

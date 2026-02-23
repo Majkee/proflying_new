@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, Edit, Phone, Mail, Plus, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/hooks/use-user";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,10 +34,10 @@ export default function StudentDetailPage({
   const [showPassForm, setShowPassForm] = useState(false);
   const [renewingPass, setRenewingPass] = useState<Pass | undefined>(undefined);
   const { profile } = useUser();
-  const supabase = createClient();
   const isManagerPlus = profile?.role === "super_admin" || profile?.role === "manager";
 
   const loadData = async () => {
+    const supabase = createClient();
     const { data } = await supabase
       .from("students")
       .select("*")
@@ -81,6 +82,7 @@ export default function StudentDetailPage({
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, isManagerPlus]);
 
   const handlePassCreated = () => {
@@ -100,11 +102,7 @@ export default function StudentDetailPage({
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!student) {

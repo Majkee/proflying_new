@@ -48,9 +48,9 @@ export function AttendanceGrid({ groupId, groupName, groupCode, dayOfWeek }: Att
     name: "",
   });
   const [passMap, setPassMap] = useState<Map<string, string>>(new Map());
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     async function loadMembers() {
       const { data } = await supabase
         .from("group_memberships")
@@ -153,6 +153,8 @@ export function AttendanceGrid({ groupId, groupName, groupCode, dayOfWeek }: Att
     // Create a temporary student for this session
     // Or use the substitute_name field in attendance
     if (!sessionId) return;
+
+    const supabase = createClient();
 
     // Create a placeholder student entry for the substitute
     const { data: student } = await supabase

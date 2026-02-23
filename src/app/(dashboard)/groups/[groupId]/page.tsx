@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { LevelBadge } from "@/components/shared/badges";
 import { GroupRoster } from "@/components/groups/group-roster";
 import { GroupForm } from "@/components/groups/group-form";
@@ -23,9 +24,9 @@ export default function GroupDetailPage({
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     async function loadGroup() {
       const { data } = await supabase
         .from("groups")
@@ -41,11 +42,7 @@ export default function GroupDetailPage({
   }, [groupId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!group) {

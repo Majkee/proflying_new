@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ArrowLeft, Plus, Building2, Edit } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { Studio } from "@/lib/types/database";
 
 export default function StudiosSettingsPage() {
@@ -28,17 +29,17 @@ export default function StudiosSettingsPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
-  const supabase = createClient();
 
-  async function loadStudios() {
+  const loadStudios = useCallback(async () => {
+    const supabase = createClient();
     const { data } = await supabase.from("studios").select("*").order("name");
     setStudios(data ?? []);
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
     loadStudios();
-  }, []);
+  }, [loadStudios]);
 
   const openCreate = () => {
     setEditingStudio(null);
@@ -58,6 +59,7 @@ export default function StudiosSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    const supabase = createClient();
     const payload = {
       name: name.trim(),
       address: address.trim() || null,
@@ -98,9 +100,7 @@ export default function StudiosSettingsPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <LoadingSpinner size="sm" />
       ) : (
         <div className="grid gap-3">
           {studios.map((studio) => (

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
 import { usePassTemplates } from "@/lib/hooks/use-pass-templates";
+import { PassSchema } from "@/lib/validations/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,8 +45,8 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
   const [autoRenew, setAutoRenew] = useState(previousPass?.auto_renew ?? false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -75,7 +77,31 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
     e.preventDefault();
     if (!activeStudio) return;
 
+    setFieldErrors({});
+
+    const parsed = PassSchema.safeParse({
+      template_id: selectedTemplateId,
+      price_amount: price,
+      valid_from: validFrom,
+      valid_until: validUntil,
+      entries_total: entriesTotal ? parseInt(entriesTotal) : null,
+      auto_renew: autoRenew,
+      notes,
+    });
+
+    if (!parsed.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key && !errors[key]) errors[key] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
+
     setSaving(true);
+
+    const supabase = createClient();
 
     // Deactivate previous pass if renewing
     if (previousPass) {
@@ -86,16 +112,23 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
       studio_id: activeStudio.id,
       student_id: studentId,
       pass_type: "custom",
-      template_id: selectedTemplateId || null,
-      price_amount: parseInt(price) || 0,
-      valid_from: validFrom,
-      valid_until: validUntil,
-      entries_total: entriesTotal ? parseInt(entriesTotal) : null,
-      auto_renew: autoRenew,
-      notes: notes.trim() || null,
+      template_id: parsed.data.template_id,
+      price_amount: parsed.data.price_amount,
+      valid_from: parsed.data.valid_from,
+      valid_until: parsed.data.valid_until,
+      entries_total: parsed.data.entries_total ?? null,
+      auto_renew: parsed.data.auto_renew,
+      notes: parsed.data.notes,
     }).select("id").single();
 
-    if (!error && data) onSuccess(data.id);
+    if (error || !data) {
+      toast.error("Nie udalo sie zapisac karnetu");
+      setSaving(false);
+      return;
+    }
+
+    toast.success(previousPass ? "Karnet odnowiony" : "Karnet utworzony");
+    onSuccess(data.id);
     setSaving(false);
   };
 
@@ -129,6 +162,7 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
             <div className="space-y-2">
               <Label>Cena (zl)</Label>
               <Input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+              {fieldErrors.price_amount && <p className="text-sm text-destructive">{fieldErrors.price_amount}</p>}
             </div>
             <div className="space-y-2">
               <Label>Liczba wejsc</Label>
@@ -139,16 +173,19 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
                 onChange={(e) => setEntriesTotal(e.target.value)}
                 placeholder="Puste = bez limitu"
               />
+              {fieldErrors.entries_total && <p className="text-sm text-destructive">{fieldErrors.entries_total}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Od</Label>
               <Input type="date" value={validFrom} onChange={(e) => handleValidFromChange(e.target.value)} />
+              {fieldErrors.valid_from && <p className="text-sm text-destructive">{fieldErrors.valid_from}</p>}
             </div>
             <div className="space-y-2">
               <Label>Do</Label>
               <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+              {fieldErrors.valid_until && <p className="text-sm text-destructive">{fieldErrors.valid_until}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2">

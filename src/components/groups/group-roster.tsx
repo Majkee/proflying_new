@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
@@ -14,6 +14,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { Student } from "@/lib/types/database";
 
 interface RosterMember {
@@ -33,9 +34,9 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
+    const supabase = createClient();
     const { data } = await supabase
       .from("group_memberships")
       .select("id, student_id, student:students(id, full_name, phone)")
@@ -44,15 +45,16 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
 
     setMembers((data as unknown as RosterMember[]) ?? []);
     setLoading(false);
-  }
+  }, [groupId]);
 
   useEffect(() => {
     loadMembers();
-  }, [groupId]);
+  }, [loadMembers]);
 
   const openAddDialog = async () => {
     if (!activeStudio) return;
 
+    const supabase = createClient();
     const memberIds = members.map((m) => m.student_id);
     const { data } = await supabase
       .from("students")
@@ -71,6 +73,7 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
   const handleAdd = async () => {
     if (!selectedStudentId) return;
 
+    const supabase = createClient();
     await supabase.from("group_memberships").insert({
       student_id: selectedStudentId,
       group_id: groupId,
@@ -81,6 +84,7 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
   };
 
   const handleRemove = async (membershipId: string) => {
+    const supabase = createClient();
     await supabase
       .from("group_memberships")
       .update({ is_active: false, left_at: new Date().toISOString().split("T")[0] })
@@ -90,11 +94,7 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner size="sm" />;
   }
 
   return (

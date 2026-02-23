@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { AttendanceGrid } from "@/components/attendance/attendance-grid";
 import type { Group } from "@/lib/types/database";
 
@@ -16,9 +17,9 @@ export default function AttendanceGroupPage({
   const { groupId } = use(params);
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     async function loadGroup() {
       const { data } = await supabase
         .from("groups")
@@ -34,11 +35,7 @@ export default function AttendanceGroupPage({
   }, [groupId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!group) {

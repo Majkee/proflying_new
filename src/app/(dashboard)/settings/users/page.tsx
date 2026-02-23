@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ArrowLeft, Plus, User, Shield, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { Profile, Role, Studio, StudioMember } from "@/lib/types/database";
 
 const roleLabels: Record<string, string> = {
@@ -45,9 +46,9 @@ export default function UsersSettingsPage() {
   const [studioId, setStudioId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const supabase = createClient();
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const supabase = createClient();
     const [profilesRes, studiosRes] = await Promise.all([
       supabase.from("profiles").select("*").order("full_name"),
       supabase.from("studios").select("*").eq("is_active", true).order("name"),
@@ -55,15 +56,17 @@ export default function UsersSettingsPage() {
     setProfiles(profilesRes.data ?? []);
     setStudios(studiosRes.data ?? []);
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreateUser = async () => {
     setSaving(true);
     setError("");
+
+    const supabase = createClient();
 
     // Create auth user via admin API (this requires service role key,
     // so in production you'd use a server action or edge function)
@@ -132,9 +135,7 @@ export default function UsersSettingsPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <LoadingSpinner size="sm" />
       ) : (
         <div className="grid gap-3">
           {profiles.map((profile) => {

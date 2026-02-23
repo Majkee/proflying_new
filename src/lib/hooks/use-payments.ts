@@ -1,107 +1,112 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "./use-studio";
+import { useSupabaseQuery } from "./use-supabase-query";
 import type { Payment, Pass } from "@/lib/types/database";
 
-export function usePayments(studentId?: string) {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
+export function usePayments(studentId?: string, options?: { limit?: number; offset?: number }) {
   const { activeStudio } = useStudio();
-  const supabase = createClient();
+  const limit = options?.limit ?? 50;
+  const offset = options?.offset ?? 0;
 
-  const fetchPayments = useCallback(async () => {
-    if (!activeStudio) {
-      setPayments([]);
-      setLoading(false);
-      return;
-    }
+  const result = useSupabaseQuery<Payment[]>(
+    async () => {
+      if (!activeStudio) return [];
 
-    setLoading(true);
-    try {
+      const supabase = createClient();
       let query = supabase
         .from("payments")
         .select("*, student:students(id, full_name), pass:passes(id, pass_type, valid_from, valid_until)")
         .eq("studio_id", activeStudio.id)
-        .order("paid_at", { ascending: false });
+        .order("paid_at", { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (studentId) {
         query = query.eq("student_id", studentId);
       }
 
-      const { data } = await query;
-      setPayments((data as Payment[]) ?? []);
-    } catch {
-      setPayments([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeStudio?.id, studentId]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data as Payment[]) ?? [];
+    },
+    [activeStudio?.id, studentId, limit, offset],
+    [],
+    { enabled: !!activeStudio }
+  );
 
-  useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
+  return { payments: result.data, loading: result.loading, error: result.error, refetch: result.refetch };
+}
 
-  return { payments, loading, refetch: fetchPayments };
+export function usePaymentsCount(studentId?: string) {
+  const { activeStudio } = useStudio();
+
+  const result = useSupabaseQuery<number>(
+    async () => {
+      if (!activeStudio) return 0;
+
+      const supabase = createClient();
+      let query = supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", activeStudio.id);
+
+      if (studentId) {
+        query = query.eq("student_id", studentId);
+      }
+
+      const { count, error } = await query;
+      if (error) throw error;
+      return count ?? 0;
+    },
+    [activeStudio?.id, studentId],
+    0,
+    { enabled: !!activeStudio }
+  );
+
+  return { count: result.data, loading: result.loading, error: result.error };
 }
 
 export function useMonthlyRevenue(year: number, month: number) {
-  const [revenue, setRevenue] = useState({
+  const { activeStudio } = useStudio();
+
+  const initialRevenue = {
     total_amount: 0,
     cash_amount: 0,
     transfer_amount: 0,
     payment_count: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const { activeStudio } = useStudio();
-  const supabase = createClient();
+  };
 
-  useEffect(() => {
-    async function fetchRevenue() {
-      if (!activeStudio) {
-        setLoading(false);
-        return;
-      }
+  const result = useSupabaseQuery(
+    async () => {
+      if (!activeStudio) return initialRevenue;
 
-      try {
-        const { data } = await supabase.rpc("get_monthly_revenue", {
-          p_studio_id: activeStudio.id,
-          p_year: year,
-          p_month: month,
-        });
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_monthly_revenue", {
+        p_studio_id: activeStudio.id,
+        p_year: year,
+        p_month: month,
+      });
 
-        if (data && data.length > 0) {
-          setRevenue(data[0]);
-        }
-      } catch {
-        // Revenue fetch failed
-      } finally {
-        setLoading(false);
-      }
-    }
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] : initialRevenue;
+    },
+    [activeStudio?.id, year, month],
+    initialRevenue,
+    { enabled: !!activeStudio }
+  );
 
-    fetchRevenue();
-  }, [activeStudio?.id, year, month]);
-
-  return { revenue, loading };
+  return { revenue: result.data, loading: result.loading, error: result.error };
 }
 
 export function usePasses(studentId?: string) {
-  const [passes, setPasses] = useState<Pass[]>([]);
-  const [loading, setLoading] = useState(true);
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
-  const fetchPasses = useCallback(async () => {
-    if (!activeStudio) {
-      setPasses([]);
-      setLoading(false);
-      return;
-    }
+  const result = useSupabaseQuery<Pass[]>(
+    async () => {
+      if (!activeStudio) return [];
 
-    setLoading(true);
-    try {
+      const supabase = createClient();
       let query = supabase
         .from("passes")
         .select("*")
@@ -112,53 +117,44 @@ export function usePasses(studentId?: string) {
         query = query.eq("student_id", studentId);
       }
 
-      const { data } = await query;
-      setPasses(data ?? []);
-    } catch {
-      setPasses([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeStudio?.id, studentId]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+    [activeStudio?.id, studentId],
+    [],
+    { enabled: !!activeStudio }
+  );
 
-  useEffect(() => {
-    fetchPasses();
-  }, [fetchPasses]);
-
-  return { passes, loading, refetch: fetchPasses };
+  return { passes: result.data, loading: result.loading, error: result.error, refetch: result.refetch };
 }
 
 export function useOverdueStudents() {
-  const [overdueStudents, setOverdueStudents] = useState<
-    { student_id: string; student_name: string; last_pass_end: string | null; pass_type: string | null }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
-  useEffect(() => {
-    async function fetchOverdue() {
-      if (!activeStudio) {
-        setOverdueStudents([]);
-        setLoading(false);
-        return;
-      }
+  type OverdueStudent = {
+    student_id: string;
+    student_name: string;
+    last_pass_end: string | null;
+    pass_type: string | null;
+  };
 
-      try {
-        const { data } = await supabase.rpc("get_overdue_students", {
-          p_studio_id: activeStudio.id,
-        });
+  const result = useSupabaseQuery<OverdueStudent[]>(
+    async () => {
+      if (!activeStudio) return [];
 
-        setOverdueStudents(data ?? []);
-      } catch {
-        setOverdueStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_overdue_students", {
+        p_studio_id: activeStudio.id,
+      });
 
-    fetchOverdue();
-  }, [activeStudio?.id]);
+      if (error) throw error;
+      return data ?? [];
+    },
+    [activeStudio?.id],
+    [],
+    { enabled: !!activeStudio }
+  );
 
-  return { overdueStudents, loading };
+  return { overdueStudents: result.data, loading: result.loading, error: result.error };
 }

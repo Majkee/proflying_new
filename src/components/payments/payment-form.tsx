@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
 import { useUser } from "@/lib/hooks/use-user";
+import { PaymentSchema } from "@/lib/validations/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,14 +34,15 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const { activeStudio } = useStudio();
   const { profile } = useUser();
   const router = useRouter();
-  const supabase = createClient();
 
   // Load students when searching
   useEffect(() => {
+    const supabase = createClient();
     async function loadStudents() {
       if (!activeStudio || !search) {
         setStudents([]);
@@ -55,10 +58,12 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
       setStudents(data ?? []);
     }
     if (!preselectedStudentId) loadStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, activeStudio?.id]);
 
   // Load preselected student
   useEffect(() => {
+    const supabase = createClient();
     async function loadStudent() {
       if (!preselectedStudentId) return;
       const { data } = await supabase
@@ -73,6 +78,7 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
 
   // Load passes for selected student
   useEffect(() => {
+    const supabase = createClient();
     async function loadPasses() {
       if (!selectedStudent) {
         setPasses([]);
@@ -100,6 +106,7 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
       }
     }
     loadPasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudent?.id]);
 
   const selectStudent = (student: Student) => {
@@ -130,27 +137,50 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeStudio || !selectedStudent || !amount || !selectedPassId) return;
+    if (!activeStudio) return;
 
     setError("");
+    setFieldErrors({});
+
+    const parsed = PaymentSchema.safeParse({
+      student_id: selectedStudent?.id ?? "",
+      pass_id: selectedPassId,
+      amount,
+      method,
+      notes,
+    });
+
+    if (!parsed.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key && !errors[key]) errors[key] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
+
     setSaving(true);
 
+    const supabase = createClient();
     const { error: err } = await supabase.from("payments").insert({
       studio_id: activeStudio.id,
-      student_id: selectedStudent.id,
-      pass_id: selectedPassId,
-      amount: parseInt(amount),
-      method,
+      student_id: parsed.data.student_id,
+      pass_id: parsed.data.pass_id,
+      amount: parsed.data.amount,
+      method: parsed.data.method,
       recorded_by: profile?.id,
-      notes: notes.trim() || null,
+      notes: parsed.data.notes,
     });
 
     if (err) {
       setError("Wystapil blad podczas zapisywania");
+      toast.error("Nie udalo sie zapisac platnosci");
       setSaving(false);
       return;
     }
 
+    toast.success("Platnosc zapisana");
     setSuccess(true);
     setSaving(false);
     setTimeout(() => {
@@ -200,6 +230,9 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
                   ))}
                 </div>
               )}
+              {fieldErrors.student_id && (
+                <p className="text-sm text-destructive">{fieldErrors.student_id}</p>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -244,6 +277,9 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
                   </Link>
                 </div>
               )}
+              {fieldErrors.pass_id && (
+                <p className="text-sm text-destructive">{fieldErrors.pass_id}</p>
+              )}
             </div>
           )}
 
@@ -259,6 +295,9 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
                 placeholder="np. 160"
                 required
               />
+              {fieldErrors.amount && (
+                <p className="text-sm text-destructive">{fieldErrors.amount}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Metoda platnosci</Label>

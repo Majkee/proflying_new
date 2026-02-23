@@ -13,13 +13,6 @@
       "Bash(supabase db push:*)",
       "Bash(supabase migration repair:*)",
       "Bash(supabase migration list:*)",
-      "Bash(for v in 00001 00002 00003 00004 00005 00006)",
-      "Bash(do)",
-      "Bash(done)",
-      "Bash(PGPASSWORD=\"szf4DixegL28jjMh\" psql \"postgresql://postgres.allxdkuwvolaoeppbkrm@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\n-- Test 1: Monthly pass \\(28 days\\), expired yesterday. No holidays in March.\n-- Zuzanna Lewandowska: monthly_2x, Feb 1-28\nUPDATE passes SET auto_renew = true, valid_from = ''2026-02-01'', valid_until = ''2026-02-21''\n  WHERE id = ''8497b9aa-9d54-4b69-9058-2bce012ececd'';\n\n-- Test 2: Monthly pass that would renew into April \\(has Easter Mon Apr 6\\)\n-- Maja Kaminska: monthly_1x, set to expire Mar 31\nUPDATE passes SET auto_renew = true, valid_from = ''2026-03-01'', valid_until = ''2026-02-21''\n  WHERE id = ''719e89f0-dd6b-42fc-9839-451fb243aa83'';\n\n-- Test 3: Single-entry pass already expired - should NOT be renewed \\(auto_renew=false\\)\n-- Keep Olga Przybylska as-is \\(single_entry, auto_renew=false\\)\n\n-- Test 4: Monthly pass with auto_renew=true expiring near May 1 \\(Swieto Pracy\\) + May 3\nUPDATE passes SET auto_renew = true, valid_from = ''2026-04-01'', valid_until = ''2026-02-21''\n  WHERE id = ''e0000000-0000-0000-0000-000000000025'';\n\nSELECT ''Test passes prepared'' AS status;\n\")",
-      "Bash(PGPASSWORD=\"szf4DixegL28jjMh\" psql:*)",
-      "Bash(PGPASSWORD=\"szf4DixegL28jjMh\" psql \"postgresql://postgres.allxdkuwvolaoeppbkrm@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\nSELECT * FROM renew_expired_passes\\(\\);\n\")",
-      "Bash(PGPASSWORD=\"szf4DixegL28jjMh\" psql \"postgresql://postgres.allxdkuwvolaoeppbkrm@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\n-- Run renewal for the 2 expired passes\nSELECT * FROM renew_expired_passes\\(\\);\n\")",
       "Bash(npm install:*)",
       "Bash(npx vitest:*)",
       "Bash(npm run build:*)",
@@ -45,7 +38,11 @@
       "Bash(npx supabase:*)",
       "Bash(python3:*)",
       "Bash(git add:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cd:*)",
+      "Bash(tail:*)",
+      "Bash(ls:*)"
     ]
   }
 }

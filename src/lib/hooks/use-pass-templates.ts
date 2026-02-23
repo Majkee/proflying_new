@@ -1,69 +1,57 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "./use-studio";
+import { useSupabaseQuery } from "./use-supabase-query";
 import type { PassTemplate } from "@/lib/types/database";
 
 export function usePassTemplates() {
-  const [templates, setTemplates] = useState<PassTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
-  const fetchTemplates = useCallback(async () => {
-    if (!activeStudio) {
-      setTemplates([]);
-      setLoading(false);
-      return;
-    }
+  const result = useSupabaseQuery<PassTemplate[]>(
+    async () => {
+      if (!activeStudio) return [];
 
-    setLoading(true);
-    const { data } = await supabase
-      .from("pass_templates")
-      .select("*")
-      .eq("studio_id", activeStudio.id)
-      .eq("is_active", true)
-      .order("sort_order");
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("pass_templates")
+        .select("*")
+        .eq("studio_id", activeStudio.id)
+        .eq("is_active", true)
+        .order("sort_order");
 
-    setTemplates(data ?? []);
-    setLoading(false);
-  }, [activeStudio?.id]);
+      if (error) throw error;
+      return data ?? [];
+    },
+    [activeStudio?.id],
+    [],
+    { enabled: !!activeStudio }
+  );
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
-  return { templates, loading, refetch: fetchTemplates };
+  return { templates: result.data, loading: result.loading, error: result.error, refetch: result.refetch };
 }
 
 export function useAllPassTemplates() {
-  const [templates, setTemplates] = useState<PassTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
   const { activeStudio } = useStudio();
-  const supabase = createClient();
 
-  const fetchTemplates = useCallback(async () => {
-    if (!activeStudio) {
-      setTemplates([]);
-      setLoading(false);
-      return;
-    }
+  const result = useSupabaseQuery<PassTemplate[]>(
+    async () => {
+      if (!activeStudio) return [];
 
-    setLoading(true);
-    const { data } = await supabase
-      .from("pass_templates")
-      .select("*")
-      .eq("studio_id", activeStudio.id)
-      .order("sort_order");
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("pass_templates")
+        .select("*")
+        .eq("studio_id", activeStudio.id)
+        .order("sort_order");
 
-    setTemplates(data ?? []);
-    setLoading(false);
-  }, [activeStudio?.id]);
+      if (error) throw error;
+      return data ?? [];
+    },
+    [activeStudio?.id],
+    [],
+    { enabled: !!activeStudio }
+  );
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
-  return { templates, loading, refetch: fetchTemplates };
+  return { templates: result.data, loading: result.loading, error: result.error, refetch: result.refetch };
 }

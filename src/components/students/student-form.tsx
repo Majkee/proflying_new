@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
+import { StudentSchema } from "@/lib/validations/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +26,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
   const [notes, setNotes] = useState(student?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { activeStudio } = useStudio();
   const router = useRouter();
-  const supabase = createClient();
 
   const isEdit = !!student;
 
@@ -35,15 +37,30 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
     if (!activeStudio) return;
 
     setError("");
+    setFieldErrors({});
+
+    const parsed = StudentSchema.safeParse({
+      full_name: fullName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      date_of_birth: dateOfBirth,
+      notes: notes,
+    });
+
+    if (!parsed.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key && !errors[key]) errors[key] = issue.message;
+      }
+      setFieldErrors(errors);
+      return;
+    }
+
     setSaving(true);
 
-    const data = {
-      full_name: fullName.trim(),
-      email: email.trim() || null,
-      phone: phone.trim() || null,
-      date_of_birth: dateOfBirth || null,
-      notes: notes.trim() || null,
-    };
+    const supabase = createClient();
+    const data = parsed.data;
 
     let result;
     if (isEdit) {
@@ -61,9 +78,12 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
 
     if (result.error) {
       setError("Wystapil blad podczas zapisywania");
+      toast.error("Nie udalo sie zapisac kursantki");
       setSaving(false);
       return;
     }
+
+    toast.success(isEdit ? "Kursantka zaktualizowana" : "Kursantka dodana");
 
     if (onSuccess) {
       onSuccess();
@@ -89,6 +109,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
               required
               placeholder="Imie i nazwisko"
             />
+            {fieldErrors.full_name && (
+              <p className="text-sm text-destructive">{fieldErrors.full_name}</p>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -100,6 +123,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+48 600 000 000"
               />
+              {fieldErrors.phone && (
+                <p className="text-sm text-destructive">{fieldErrors.phone}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -110,6 +136,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.pl"
               />
+              {fieldErrors.email && (
+                <p className="text-sm text-destructive">{fieldErrors.email}</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -120,6 +149,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
               value={dateOfBirth}
               onChange={(e) => setDateOfBirth(e.target.value)}
             />
+            {fieldErrors.date_of_birth && (
+              <p className="text-sm text-destructive">{fieldErrors.date_of_birth}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Notatki</Label>
@@ -130,6 +162,9 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
               placeholder="Dodatkowe informacje..."
               rows={3}
             />
+            {fieldErrors.notes && (
+              <p className="text-sm text-destructive">{fieldErrors.notes}</p>
+            )}
           </div>
           {error && (
             <p className="text-sm text-destructive">{error}</p>
