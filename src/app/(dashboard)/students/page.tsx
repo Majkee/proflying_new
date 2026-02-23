@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
-import { useStudents } from "@/lib/hooks/use-students";
+import { useStudentsWithPassStatus } from "@/lib/hooks/use-students";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -12,7 +12,7 @@ import { StudentList } from "@/components/students/student-list";
 
 export default function StudentsPage() {
   const [search, setSearch] = useState("");
-  const { students, loading } = useStudents(search);
+  const { students, loading } = useStudentsWithPassStatus(search);
 
   return (
     <div>
