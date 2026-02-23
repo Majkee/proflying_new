@@ -27,7 +27,17 @@ export default function DashboardPage() {
   const { activeStudio } = useStudio();
   const { profile } = useUser();
   const [unpaidStudents, setUnpaidStudents] = useState<
-    { studentId: string; studentName: string; groupName: string; groupCode: string; validUntil: string | null }[]
+    {
+      studentId: string;
+      studentName: string;
+      groupCode: string;
+      reason: "no_pass" | "expired" | "unpaid_pass";
+      validUntil: string | null;
+      passId: string | null;
+      templateName: string | null;
+      priceAmount: number | null;
+      validFrom: string | null;
+    }[]
   >([]);
   const [birthdayStudents, setBirthdayStudents] = useState<Pick<Student, "id" | "full_name" | "date_of_birth">[]>([]);
   const [stats, setStats] = useState({
@@ -78,17 +88,47 @@ export default function DashboardPage() {
             const studentIds = [...new Set(memberList.map((m) => m.studentId))];
             const { data: passes } = await supabase
               .from("passes")
-              .select("student_id, valid_until")
+              .select("id, student_id, valid_from, valid_until, pass_type, price_amount, template:pass_templates(name)")
               .in("student_id", studentIds)
               .eq("is_active", true)
               .order("valid_until", { ascending: false });
 
-            // Build map: studentId -> latest valid_until
-            const passMap = new Map<string, string>();
-            if (passes) {
-              for (const p of passes) {
-                if (!passMap.has(p.student_id)) {
-                  passMap.set(p.student_id, p.valid_until);
+            // For each student, find best active pass covering today and latest expiry
+            const bestPassMap = new Map<string, {
+              id: string; validFrom: string; validUntil: string;
+              priceAmount: number; templateName: string | null;
+            }>();
+            const latestExpiryMap = new Map<string, string>();
+
+            for (const p of passes ?? []) {
+              const tmpl = p.template as unknown as { name: string } | null;
+              if (!latestExpiryMap.has(p.student_id)) {
+                latestExpiryMap.set(p.student_id, p.valid_until);
+              }
+              if (p.valid_from <= todayStr && p.valid_until >= todayStr && !bestPassMap.has(p.student_id)) {
+                bestPassMap.set(p.student_id, {
+                  id: p.id,
+                  validFrom: p.valid_from,
+                  validUntil: p.valid_until,
+                  priceAmount: p.price_amount,
+                  templateName: tmpl?.name ?? null,
+                });
+              }
+            }
+
+            // Check which active passes have been paid for the current period
+            const activePassIds = [...bestPassMap.values()].map((p) => p.id);
+            const paidPassIds = new Set<string>();
+            if (activePassIds.length > 0) {
+              const { data: payments } = await supabase
+                .from("payments")
+                .select("pass_id, paid_at")
+                .in("pass_id", activePassIds);
+
+              for (const pay of payments ?? []) {
+                const pass = [...bestPassMap.entries()].find(([, v]) => v.id === pay.pass_id);
+                if (pass && pay.paid_at >= pass[1].validFrom) {
+                  paidPassIds.add(pay.pass_id);
                 }
               }
             }
@@ -96,23 +136,43 @@ export default function DashboardPage() {
             // Build group lookup
             const groupMap = new Map(todayGroups.map((g) => [g.id, g]));
 
-            // Find students with no pass or expired pass
+            // Classify students
             const unpaid: typeof unpaidStudents = [];
             const seen = new Set<string>();
             for (const m of memberList) {
               if (seen.has(m.studentId)) continue;
-              const validUntil = passMap.get(m.studentId) ?? null;
-              const isExpired = !validUntil || validUntil < todayStr;
-              if (isExpired) {
-                const group = groupMap.get(m.groupId);
+              seen.add(m.studentId);
+
+              const group = groupMap.get(m.groupId);
+              const bestPass = bestPassMap.get(m.studentId);
+
+              if (!bestPass) {
+                // No active pass covering today
+                const latestExpiry = latestExpiryMap.get(m.studentId) ?? null;
                 unpaid.push({
                   studentId: m.studentId,
                   studentName: m.studentName,
-                  groupName: group?.name ?? "",
                   groupCode: group?.code ?? "",
-                  validUntil,
+                  reason: latestExpiry ? "expired" : "no_pass",
+                  validUntil: latestExpiry,
+                  passId: null,
+                  templateName: null,
+                  priceAmount: null,
+                  validFrom: null,
                 });
-                seen.add(m.studentId);
+              } else if (!paidPassIds.has(bestPass.id)) {
+                // Active pass but no payment for current period
+                unpaid.push({
+                  studentId: m.studentId,
+                  studentName: m.studentName,
+                  groupCode: group?.code ?? "",
+                  reason: "unpaid_pass",
+                  validUntil: bestPass.validUntil,
+                  passId: bestPass.id,
+                  templateName: bestPass.templateName,
+                  priceAmount: bestPass.priceAmount,
+                  validFrom: bestPass.validFrom,
+                });
               }
             }
             setUnpaidStudents(unpaid);
@@ -306,7 +366,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Banknote className="h-4 w-4 text-red-600" />
-                Brak karnetu ({unpaidStudents.length})
+                Do oplaty ({unpaidStudents.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -319,14 +379,30 @@ export default function DashboardPage() {
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                           {s.groupCode}
                         </Badge>
-                        <span>
-                          {s.validUntil
-                            ? `Wygasl: ${new Date(s.validUntil).toLocaleDateString("pl-PL")}`
-                            : "Brak karnetu"}
-                        </span>
+                        {s.reason === "unpaid_pass" ? (
+                          <span>
+                            {s.templateName ?? "Karnet"}
+                            {" · "}
+                            {new Date(s.validFrom!).toLocaleDateString("pl-PL")} – {new Date(s.validUntil!).toLocaleDateString("pl-PL")}
+                            {" · "}
+                            {s.priceAmount} zl
+                          </span>
+                        ) : (
+                          <span>
+                            {s.validUntil
+                              ? `Wygasl: ${new Date(s.validUntil).toLocaleDateString("pl-PL")}`
+                              : "Brak karnetu"}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <Link href={`/students/${s.studentId}?tab=passes`}>
+                    <Link
+                      href={
+                        s.reason === "unpaid_pass"
+                          ? `/payments/record?student=${s.studentId}&pass=${s.passId}`
+                          : `/students/${s.studentId}?tab=passes`
+                      }
+                    >
                       <Button size="sm" variant="outline">
                         Oplac
                       </Button>

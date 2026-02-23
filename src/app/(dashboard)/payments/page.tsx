@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, CreditCard, Banknote, ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMonthlyRevenue, useOverdueStudents } from "@/lib/hooks/use-payments";
+import { Plus, CreditCard, Banknote, ArrowRightLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useMonthlyRevenue, useOverdueStudents, useUnpaidPasses } from "@/lib/hooks/use-payments";
 import { usePayments } from "@/lib/hooks/use-payments";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaymentHistory } from "@/components/payments/payment-history";
 import { OverdueList } from "@/components/payments/overdue-list";
+import { UnpaidPassesList } from "@/components/payments/unpaid-passes-list";
 
 const MONTH_NAMES = [
   "Styczen", "Luty", "Marzec", "Kwiecien", "Maj", "Czerwiec",
@@ -20,8 +22,10 @@ export default function PaymentsPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [search, setSearch] = useState("");
   const { revenue, loading: revenueLoading } = useMonthlyRevenue(year, month);
   const { overdueStudents } = useOverdueStudents();
+  const { unpaidPasses } = useUnpaidPasses();
   const { payments, loading: paymentsLoading } = usePayments();
 
   const prevMonth = () => {
@@ -101,9 +105,35 @@ export default function PaymentsPage() {
         </Card>
       </div>
 
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Szukaj kursantki..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Unpaid passes */}
+      <div className="mb-6">
+        <UnpaidPassesList
+          passes={unpaidPasses.filter((p) => {
+            if (!search.trim()) return true;
+            return p.student_name.toLowerCase().includes(search.toLowerCase());
+          })}
+        />
+      </div>
+
       {/* Overdue list */}
       <div className="mb-8">
-        <OverdueList students={overdueStudents} />
+        <OverdueList
+          students={overdueStudents.filter((s) => {
+            if (!search.trim()) return true;
+            return s.student_name.toLowerCase().includes(search.toLowerCase());
+          })}
+        />
       </div>
 
       {/* Recent payments */}
@@ -114,7 +144,14 @@ export default function PaymentsPage() {
             <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : (
-          <PaymentHistory payments={payments.slice(0, 20)} />
+          <PaymentHistory
+            payments={payments
+              .filter((p) => {
+                if (!search.trim()) return true;
+                return p.student?.full_name?.toLowerCase().includes(search.toLowerCase());
+              })
+              .slice(0, 20)}
+          />
         )}
       </div>
     </div>

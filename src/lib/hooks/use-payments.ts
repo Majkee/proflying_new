@@ -162,3 +162,48 @@ export function useOverdueStudents() {
 
   return { overdueStudents, loading };
 }
+
+export function useUnpaidPasses() {
+  const [unpaidPasses, setUnpaidPasses] = useState<
+    {
+      pass_id: string;
+      student_id: string;
+      student_name: string;
+      pass_type: string;
+      template_name: string | null;
+      valid_from: string;
+      valid_until: string;
+      price_amount: number;
+      auto_renew: boolean;
+    }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const { activeStudio } = useStudio();
+  const supabase = createClient();
+
+  const fetchUnpaidPasses = useCallback(async () => {
+    if (!activeStudio) {
+      setUnpaidPasses([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data } = await supabase.rpc("get_unpaid_passes", {
+        p_studio_id: activeStudio.id,
+      });
+
+      setUnpaidPasses(data ?? []);
+    } catch {
+      setUnpaidPasses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeStudio?.id]);
+
+  useEffect(() => {
+    fetchUnpaidPasses();
+  }, [fetchUnpaidPasses]);
+
+  return { unpaidPasses, loading, refetch: fetchUnpaidPasses };
+}
