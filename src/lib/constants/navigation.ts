@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   Calendar,
+  CalendarDays,
   Users,
   Layers,
   CreditCard,
@@ -21,6 +22,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Pulpit",
     href: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Kalendarz",
+    href: "/calendar",
+    icon: CalendarDays,
+    mobileHidden: true,
   },
   {
     label: "Obecnosc",
@@ -59,6 +66,11 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const MOBILE_MORE_ITEMS: NavItem[] = [
+  {
+    label: "Kalendarz",
+    href: "/calendar",
+    icon: CalendarDays,
+  },
   {
     label: "Grupy",
     href: "/groups",

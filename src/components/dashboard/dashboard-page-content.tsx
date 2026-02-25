@@ -22,7 +22,6 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { ErrorCard } from "@/components/shared/error-card";
-import { DashboardCalendar } from "@/components/dashboard/dashboard-calendar";
 import type { Group, Student } from "@/lib/types/database";
 
 
@@ -428,12 +427,6 @@ export function DashboardPageContent() {
         )}
       </div>
 
-      {/* Calendar */}
-      {activeStudio && (
-        <div className="mt-8">
-          <DashboardCalendar studioId={activeStudio.id} />
-        </div>
-      )}
     </div>
   );
 }
