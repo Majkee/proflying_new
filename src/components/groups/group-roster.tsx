@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { Student } from "@/lib/types/database";
 
@@ -33,6 +33,7 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
   const [addOpen, setAddOpen] = useState(false);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [search, setSearch] = useState("");
   const { activeStudio } = useStudio();
 
   const loadMembers = useCallback(async () => {
@@ -67,6 +68,7 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
       (data ?? []).filter((s) => !memberIds.includes(s.id))
     );
     setSelectedStudentId("");
+    setSearch("");
     setAddOpen(true);
   };
 
@@ -74,10 +76,16 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
     if (!selectedStudentId) return;
 
     const supabase = createClient();
-    await supabase.from("group_memberships").insert({
-      student_id: selectedStudentId,
-      group_id: groupId,
-    });
+    await supabase.from("group_memberships").upsert(
+      {
+        student_id: selectedStudentId,
+        group_id: groupId,
+        is_active: true,
+        joined_at: new Date().toISOString().split("T")[0],
+        left_at: null,
+      },
+      { onConflict: "student_id,group_id" }
+    );
 
     setAddOpen(false);
     loadMembers();
@@ -145,22 +153,47 @@ export function GroupRoster({ groupId }: GroupRosterProps) {
             <DialogDescription>Wybierz kursantke z listy</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Wybierz kursantke..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableStudents.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {availableStudents.length === 0 && (
+            {availableStudents.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Wszystkie kursantki sa juz w tej grupie
               </p>
+            ) : (
+              <>
+                <Input
+                  placeholder="Szukaj kursantki..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setSelectedStudentId("");
+                  }}
+                  autoFocus
+                />
+                <div className="max-h-48 overflow-y-auto rounded-md border">
+                  {availableStudents
+                    .filter((s) =>
+                      s.full_name.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${
+                          selectedStudentId === s.id ? "bg-accent font-medium" : ""
+                        }`}
+                        onClick={() => setSelectedStudentId(s.id)}
+                      >
+                        {s.full_name}
+                      </button>
+                    ))}
+                  {availableStudents.filter((s) =>
+                    s.full_name.toLowerCase().includes(search.toLowerCase())
+                  ).length === 0 && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      Brak wynikow
+                    </p>
+                  )}
+                </div>
+              </>
             )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAddOpen(false)}>

@@ -27,7 +27,7 @@ vi.mock("@/lib/supabase/client", () => ({
 function createWrapper(activeStudio = testStudio) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(StudioContext.Provider, {
-      value: { activeStudio, studios: [testStudio], loading: false, switchStudio: vi.fn() },
+      value: { activeStudio, studios: [testStudio], loading: false, switchStudio: vi.fn(), isAllStudios: false, setAllStudios: vi.fn() },
     }, children);
   };
 }
@@ -35,7 +35,7 @@ function createWrapper(activeStudio = testStudio) {
 function createNullWrapper() {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(StudioContext.Provider, {
-      value: { activeStudio: null, studios: [], loading: false, switchStudio: vi.fn() },
+      value: { activeStudio: null, studios: [], loading: false, switchStudio: vi.fn(), isAllStudios: false, setAllStudios: vi.fn() },
     }, children);
   };
 }

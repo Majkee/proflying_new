@@ -10,7 +10,12 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e": "npx playwright test --config=e2e/playwright.config.ts",
+    "e2e:ui": "npx playwright test --config=e2e/playwright.config.ts --ui",
+    "e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed",
+    "e2e:report": "npx playwright show-report e2e/playwright-report",
+    "e2e:cleanup": "node -e \"require('dotenv').config({path:'.env.local'});import('./e2e/helpers/supabase-admin.ts').then(m=>m.cleanupE2EData())\""
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -43,6 +48,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -51,6 +57,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "dotenv": "^17.3.1",
     "eslint": "^9.39.3",
     "eslint-config-next": "^16.1.6",
     "jsdom": "^25.0.1",

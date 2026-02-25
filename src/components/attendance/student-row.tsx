@@ -35,7 +35,7 @@ export function StudentRow({
   onPaymentClick,
 }: StudentRowProps) {
   return (
-    <div className="flex items-center gap-3 py-3 px-2 border-b last:border-b-0">
+    <div data-testid="attendance-student-row" className="flex items-center gap-3 py-3 px-2 border-b last:border-b-0">
       <div className="flex-1 min-w-0">
         <p className={cn("font-medium truncate", isSubstitute && "italic")}>
           {isSubstitute && substituteName ? substituteName : name}

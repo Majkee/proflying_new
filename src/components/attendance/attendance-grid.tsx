@@ -231,7 +231,7 @@ export function AttendanceGrid({ groupId, groupName, groupCode, dayOfWeek }: Att
         </CardHeader>
         <CardContent>
           {/* Summary bar */}
-          <div className="flex items-center justify-between py-2 px-2 mb-2 rounded-lg bg-muted/50">
+          <div data-testid="attendance-summary" className="flex items-center justify-between py-2 px-2 mb-2 rounded-lg bg-muted/50">
             <span className="text-sm font-medium">
               Obecne: {presentCount}/{totalCount}
             </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ChevronDown } from "lucide-react";
+import { Building2, ChevronDown, Globe } from "lucide-react";
 import { useStudio } from "@/lib/hooks/use-studio";
 import { useUser } from "@/lib/hooks/use-user";
 import {
@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function StudioSwitcher() {
-  const { activeStudio, studios, switchStudio } = useStudio();
+  const { activeStudio, studios, switchStudio, isAllStudios, setAllStudios } = useStudio();
   const { profile } = useUser();
 
   if (studios.length <= 1 && profile?.role !== "super_admin") {
@@ -31,10 +31,10 @@ export function StudioSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center gap-2 h-9 px-2">
+        <Button variant="ghost" data-testid="studio-switcher" className="flex items-center gap-2 h-9 px-2">
           <Building2 className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium truncate max-w-[160px]">
-            {activeStudio?.name ?? "Wybierz studio"}
+            {isAllStudios ? "Wszystkie studia" : activeStudio?.name ?? "Wybierz studio"}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -46,7 +46,7 @@ export function StudioSwitcher() {
           <DropdownMenuItem
             key={studio.id}
             onClick={() => switchStudio(studio.id)}
-            className={activeStudio?.id === studio.id ? "bg-accent" : ""}
+            className={activeStudio?.id === studio.id && !isAllStudios ? "bg-accent" : ""}
           >
             <Building2 className="mr-2 h-4 w-4" />
             <div className="flex flex-col">
@@ -57,6 +57,18 @@ export function StudioSwitcher() {
             </div>
           </DropdownMenuItem>
         ))}
+        {profile?.role === "super_admin" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={setAllStudios}
+              className={isAllStudios ? "bg-accent" : ""}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              Wszystkie studia
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

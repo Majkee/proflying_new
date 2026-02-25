@@ -29,6 +29,7 @@ export default function StudentDetailPage({
   const [groups, setGroups] = useState<(GroupMembership & { group: Group })[]>([]);
   const [passes, setPasses] = useState<(Pass & { template?: { name: string } })[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [paidPassIds, setPaidPassIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showPassForm, setShowPassForm] = useState(false);
@@ -65,15 +66,26 @@ export default function StudentDetailPage({
 
       setPasses(passData ?? []);
 
-      // Load payments (manager+ only)
-      if (isManagerPlus) {
-        const { data: paymentData } = await supabase
-          .from("payments")
-          .select("*")
-          .eq("student_id", data.id)
-          .order("paid_at", { ascending: false });
+      // Load payments for payment status badges and manager tab
+      const { data: paymentData } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("student_id", data.id)
+        .order("paid_at", { ascending: false });
 
-        setPayments(paymentData ?? []);
+      // Build set of pass IDs that have been paid for their current period
+      const paidIds = new Set<string>();
+      for (const p of passData ?? []) {
+        const hasPaid = (paymentData ?? []).some(
+          (pay: { pass_id: string; paid_at: string }) =>
+            pay.pass_id === p.id && pay.paid_at >= p.valid_from
+        );
+        if (hasPaid) paidIds.add(p.id);
+      }
+      setPaidPassIds(paidIds);
+
+      if (isManagerPlus) {
+        setPayments((paymentData as Payment[]) ?? []);
       }
     }
 
@@ -238,12 +250,30 @@ export default function StudentDetailPage({
                   {passes.map((pass) => {
                     const isExpired = new Date(pass.valid_until) < new Date();
                     const templateName = pass.template?.name;
+                    const isPaid = paidPassIds.has(pass.id);
+
+                    // Auto-renewal date calculations
+                    let renewalDate: string | null = null;
+                    let nextFrom: string | null = null;
+                    let nextUntil: string | null = null;
+                    if (pass.auto_renew && !isExpired) {
+                      const vFrom = new Date(pass.valid_from + "T00:00:00");
+                      const vUntil = new Date(pass.valid_until + "T00:00:00");
+                      const durationMs = vUntil.getTime() - vFrom.getTime();
+                      const renewal = new Date(vUntil);
+                      renewal.setDate(renewal.getDate() + 1);
+                      const nEnd = new Date(renewal.getTime() + durationMs);
+                      renewalDate = renewal.toLocaleDateString("pl-PL");
+                      nextFrom = renewal.toLocaleDateString("pl-PL");
+                      nextUntil = nEnd.toLocaleDateString("pl-PL");
+                    }
+
                     return (
                       <Card key={pass.id} className={isExpired ? "opacity-60" : ""}>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
                                 <Badge variant={isExpired ? "outline" : "default"}>
                                   {templateName ??
                                     (pass.pass_type === "monthly_1x" ? "1x/tydzien" :
@@ -252,7 +282,10 @@ export default function StudentDetailPage({
                                 </Badge>
                                 {isExpired && <Badge variant="destructive">Wygasl</Badge>}
                                 {!isExpired && pass.is_active && <Badge variant="secondary">Aktywny</Badge>}
-                                {pass.auto_renew && <Badge variant="outline">Auto-odnowienie</Badge>}
+                                {isPaid
+                                  ? <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-100">Oplacony</Badge>
+                                  : <Badge className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-100">Nieoplacony</Badge>
+                                }
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {pass.valid_from} - {pass.valid_until}
@@ -262,10 +295,18 @@ export default function StudentDetailPage({
                                   Wejscia: {pass.entries_used}/{pass.entries_total}
                                 </p>
                               )}
+                              {pass.auto_renew && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Auto-odnowienie
+                                  {renewalDate && (
+                                    <> · {renewalDate} ({nextFrom} – {nextUntil})</>
+                                  )}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right flex flex-col items-end gap-2">
                               <p className="font-semibold">{pass.price_amount} zl</p>
-                              {isManagerPlus && !isExpired && pass.is_active && (
+                              {isManagerPlus && !isExpired && pass.is_active && !isPaid && (
                                 <Link href={`/payments/record?student=${student.id}&pass=${pass.id}`}>
                                   <Button size="sm" variant="outline">Zapisz platnosc</Button>
                                 </Link>

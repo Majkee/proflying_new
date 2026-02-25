@@ -77,7 +77,9 @@ export function useAttendance(sessionId: string | null) {
         setOptimisticRecords(null);
         fetchAttendance();
       } else {
+        // Refresh from server to keep in sync
         setOptimisticRecords(null);
+        fetchAttendance();
       }
     },
     [sessionId, records, optimisticRecords, fetchAttendance]

@@ -106,6 +106,35 @@ describe("useStudioProvider", () => {
     expect(localStorage.setItem).toHaveBeenCalledWith("proflying_active_studio", "studio-2");
   });
 
+  it("switchStudio clears isAllStudios flag", async () => {
+    const { useStudioProvider } = await import("../use-studio");
+    const { result } = renderHook(() => useStudioProvider(testProfile));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.setAllStudios();
+    });
+    expect(result.current.isAllStudios).toBe(true);
+
+    act(() => {
+      result.current.switchStudio("studio-1");
+    });
+    expect(result.current.isAllStudios).toBe(false);
+  });
+
+  it("setAllStudios nulls active, sets flag, removes localStorage", async () => {
+    const { useStudioProvider } = await import("../use-studio");
+    const { result } = renderHook(() => useStudioProvider(testProfile));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.setAllStudios();
+    });
+
+    expect(result.current.activeStudio).toBeNull();
+    expect(result.current.isAllStudios).toBe(true);
+    expect(localStorage.removeItem).toHaveBeenCalledWith("proflying_active_studio");
+  });
 });
 
 describe("useStudio", () => {
@@ -119,6 +148,8 @@ describe("useStudio", () => {
           studios: [testStudio],
           loading: false,
           switchStudio: vi.fn(),
+          isAllStudios: false,
+          setAllStudios: vi.fn(),
         },
       }, children);
 

@@ -10,6 +10,8 @@ interface StudioContextOverrides {
   studios?: Studio[];
   loading?: boolean;
   switchStudio?: (studioId: string) => void;
+  isAllStudios?: boolean;
+  setAllStudios?: () => void;
 }
 
 export function renderWithProviders(
@@ -23,6 +25,8 @@ export function renderWithProviders(
     studios: studioContext?.studios ?? [testStudio],
     loading: studioContext?.loading ?? false,
     switchStudio: studioContext?.switchStudio ?? vi.fn(),
+    isAllStudios: studioContext?.isAllStudios ?? false,
+    setAllStudios: studioContext?.setAllStudios ?? vi.fn(),
   };
 
   function Wrapper({ children }: { children: React.ReactNode }) {

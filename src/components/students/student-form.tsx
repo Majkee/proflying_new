@@ -99,7 +99,7 @@ export function StudentForm({ student, onSuccess }: StudentFormProps) {
         <CardTitle>{isEdit ? "Edytuj kursantke" : "Nowa kursantka"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} data-testid="student-form" className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="fullName">Imie i nazwisko *</Label>
             <Input

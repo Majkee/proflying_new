@@ -33,7 +33,7 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-full hover:bg-accent p-1 transition-colors">
+        <button data-testid="user-menu" className="flex items-center gap-2 rounded-full hover:bg-accent p-1 transition-colors">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary/10 text-primary text-xs">
               {profile?.full_name ? getInitials(profile.full_name) : <User className="h-4 w-4" />}

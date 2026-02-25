@@ -210,7 +210,7 @@ export function PaymentForm({ preselectedStudentId, preselectedPassId }: Payment
         <CardTitle>Zapisz platnosc</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} data-testid="payment-form" className="space-y-4">
           {/* Student selection */}
           {!selectedStudent ? (
             <div className="space-y-2">

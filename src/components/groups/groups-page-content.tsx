@@ -46,7 +46,7 @@ export function GroupsPageContent() {
           }
         />
       ) : (
-        <GroupList groups={groups} />
+        <GroupList groups={groups} onDeactivated={refetch} />
       )}
     </div>
   );

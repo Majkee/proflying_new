@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, CreditCard, Banknote, ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMonthlyRevenue, useOverdueStudents } from "@/lib/hooks/use-payments";
+import { Plus, CreditCard, Banknote, ArrowRightLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useMonthlyRevenue, useOverdueStudents, useUnpaidPasses } from "@/lib/hooks/use-payments";
 import { usePayments, usePaymentsCount } from "@/lib/hooks/use-payments";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { ErrorCard } from "@/components/shared/error-card";
 import { PaymentHistory } from "@/components/payments/payment-history";
 import { OverdueList } from "@/components/payments/overdue-list";
+import { UnpaidPassesList } from "@/components/payments/unpaid-passes-list";
 
 const MONTH_NAMES = [
   "Styczen", "Luty", "Marzec", "Kwiecien", "Maj", "Czerwiec",
@@ -25,8 +27,10 @@ export function PaymentsPageContent() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState("");
   const { revenue, loading: revenueLoading, error: revenueError } = useMonthlyRevenue(year, month);
   const { overdueStudents } = useOverdueStudents();
+  const { unpaidPasses } = useUnpaidPasses();
   const { payments, loading: paymentsLoading, error: paymentsError, refetch } = usePayments(
     undefined,
     { limit: PAGE_SIZE, offset: page * PAGE_SIZE }
@@ -116,9 +120,35 @@ export function PaymentsPageContent() {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Szukaj kursantki..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Unpaid passes */}
+      <div className="mb-6">
+        <UnpaidPassesList
+          passes={unpaidPasses.filter((p) => {
+            if (!search.trim()) return true;
+            return p.student_name.toLowerCase().includes(search.toLowerCase());
+          })}
+        />
+      </div>
+
       {/* Overdue list */}
       <div className="mb-8">
-        <OverdueList students={overdueStudents} />
+        <OverdueList
+          students={overdueStudents.filter((s) => {
+            if (!search.trim()) return true;
+            return s.student_name.toLowerCase().includes(search.toLowerCase());
+          })}
+        />
       </div>
 
       {/* Recent payments */}

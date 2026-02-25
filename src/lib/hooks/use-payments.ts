@@ -5,6 +5,18 @@ import { useStudio } from "./use-studio";
 import { useSupabaseQuery } from "./use-supabase-query";
 import type { Payment, Pass } from "@/lib/types/database";
 
+export interface UnpaidPass {
+  pass_id: string;
+  student_id: string;
+  student_name: string;
+  pass_type: string;
+  template_name: string | null;
+  valid_from: string;
+  valid_until: string;
+  price_amount: number;
+  auto_renew: boolean;
+}
+
 export function usePayments(studentId?: string, options?: { limit?: number; offset?: number }) {
   const { activeStudio } = useStudio();
   const limit = options?.limit ?? 50;
@@ -157,4 +169,27 @@ export function useOverdueStudents() {
   );
 
   return { overdueStudents: result.data, loading: result.loading, error: result.error };
+}
+
+export function useUnpaidPasses() {
+  const { activeStudio } = useStudio();
+
+  const result = useSupabaseQuery<UnpaidPass[]>(
+    async () => {
+      if (!activeStudio) return [];
+
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_unpaid_passes", {
+        p_studio_id: activeStudio.id,
+      });
+
+      if (error) throw error;
+      return (data ?? []) as UnpaidPass[];
+    },
+    [activeStudio?.id],
+    [],
+    { enabled: !!activeStudio }
+  );
+
+  return { unpaidPasses: result.data, loading: result.loading, error: result.error, refetch: result.refetch };
 }

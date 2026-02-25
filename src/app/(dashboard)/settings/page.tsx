@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Users, Ticket, CalendarOff, ChevronRight } from "lucide-react";
+import { Building2, Users, Ticket, CalendarOff, GraduationCap, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 
@@ -24,6 +24,12 @@ export default function SettingsPage() {
       description: "Zarzadzaj szablonami karnetow dla studia",
       href: "/settings/pass-types",
       icon: Ticket,
+    },
+    {
+      title: "Poziomy grup",
+      description: "Zarzadzaj poziomami zaawansowania grup",
+      href: "/settings/levels",
+      icon: GraduationCap,
     },
     {
       title: "Dni wolne",

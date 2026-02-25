@@ -12,6 +12,8 @@ interface StudioContextType {
   studios: Studio[];
   loading: boolean;
   switchStudio: (studioId: string) => void;
+  isAllStudios: boolean;
+  setAllStudios: () => void;
 }
 
 export const StudioContext = createContext<StudioContextType>({
@@ -19,6 +21,8 @@ export const StudioContext = createContext<StudioContextType>({
   studios: [],
   loading: true,
   switchStudio: () => {},
+  isAllStudios: false,
+  setAllStudios: () => {},
 });
 
 export function useStudio() {
@@ -29,6 +33,7 @@ export function useStudioProvider(profile: Profile | null) {
   const [activeStudio, setActiveStudio] = useState<Studio | null>(null);
   const [studios, setStudios] = useState<Studio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAllStudios, setIsAllStudios] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -61,12 +66,20 @@ export function useStudioProvider(profile: Profile | null) {
         const studioList = data ?? [];
         setStudios(studioList);
 
-        // Restore from cookie or default to Śrem
+        // Restore from cookie or default
         const savedStudioId = localStorage.getItem(STUDIO_COOKIE_KEY);
         const savedStudio = studioList.find((s) => s.id === savedStudioId);
 
         if (savedStudio) {
           setActiveStudio(savedStudio);
+        } else if (profile.default_studio_id) {
+          const defaultStudio = studioList.find(
+            (s) => s.id === profile.default_studio_id
+          );
+          if (defaultStudio) {
+            setActiveStudio(defaultStudio);
+            localStorage.setItem(STUDIO_COOKIE_KEY, defaultStudio.id);
+          }
         } else {
           const sremStudio = studioList.find((s) =>
             s.name.toLowerCase().includes("śrem") || s.name.toLowerCase().includes("srem")
@@ -93,16 +106,25 @@ export function useStudioProvider(profile: Profile | null) {
       const studio = studios.find((s) => s.id === studioId);
       if (studio) {
         setActiveStudio(studio);
+        setIsAllStudios(false);
         localStorage.setItem(STUDIO_COOKIE_KEY, studioId);
       }
     },
     [studios]
   );
 
+  const setAllStudios = useCallback(() => {
+    setActiveStudio(null);
+    setIsAllStudios(true);
+    localStorage.removeItem(STUDIO_COOKIE_KEY);
+  }, []);
+
   return {
     activeStudio,
     studios,
     loading,
     switchStudio,
+    isAllStudios,
+    setAllStudios,
   };
 }

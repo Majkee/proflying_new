@@ -62,6 +62,19 @@ vi.mock("@/lib/hooks/use-studio", () => ({
     studios: [testStudio],
     loading: false,
     switchStudio: vi.fn(),
+    isAllStudios: false,
+    setAllStudios: vi.fn(),
+  }),
+}));
+
+vi.mock("@/lib/hooks/use-group-levels", () => ({
+  useGroupLevels: () => ({
+    levels: [
+      { id: "lvl-1", value: "podstawa", label: "Podstawa", color: "blue", sort_order: 1, is_active: true },
+      { id: "lvl-2", value: "sredni", label: "Sredni", color: "yellow", sort_order: 2, is_active: true },
+    ],
+    loading: false,
+    refetch: vi.fn(),
   }),
 }));
 
