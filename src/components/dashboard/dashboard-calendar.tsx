@@ -312,7 +312,7 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
               {week.map((day, dayIdx) => {
                 const inMonth = isSameMonth(day, currentMonth);
                 const today = isToday(day);
-                const events = getEventsForDay(day);
+                const events = getEventsForDay(day).filter((e) => e.type !== "class");
                 const visibleEvents = events.slice(0, MAX_VISIBLE_EVENTS);
                 const hiddenCount = events.length - MAX_VISIBLE_EVENTS;
                 const isExpanded = expandedDate && isSameDay(day, expandedDate);
@@ -364,7 +364,7 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
           {expandedDate && (
             <ExpandedDayPanel
               date={expandedDate}
-              events={getEventsForDay(expandedDate)}
+              events={getEventsForDay(expandedDate).filter((e) => e.type !== "class")}
               onClose={() => setExpandedDate(null)}
             />
           )}
