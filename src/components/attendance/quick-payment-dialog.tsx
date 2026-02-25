@@ -41,15 +41,15 @@ export function QuickPaymentDialog({ open, onClose, studentId, studentName, onSu
   useEffect(() => {
     if (!open || !studentId) return;
 
-    // Reset state when dialog opens
-    setSelectedPassId("");
-    setAmount("");
-    setMethod("cash");
-    setError("");
-    setSuccess(false);
-    setSaving(false);
+    async function resetAndLoadPasses() {
+      // Reset state when dialog opens
+      setSelectedPassId("");
+      setAmount("");
+      setMethod("cash");
+      setError("");
+      setSuccess(false);
+      setSaving(false);
 
-    async function loadPasses() {
       setLoadingPasses(true);
       const supabase = createClient();
       const { data } = await supabase
@@ -70,7 +70,7 @@ export function QuickPaymentDialog({ open, onClose, studentId, studentName, onSu
       }
     }
 
-    loadPasses();
+    resetAndLoadPasses();
   }, [open, studentId]);
 
   const PASS_TYPE_LABELS: Record<string, string> = {

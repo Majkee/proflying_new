@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useSupabaseQuery } from "@/lib/hooks/use-supabase-query";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -61,14 +62,22 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
-  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [expandedDate, setExpandedDate] = useState<Date | null>(null);
   const [initialLoaded, setInitialLoaded] = useState(false);
 
-  const loadHolidays = useCallback(
-    async (rangeStart: Date, rangeEnd: Date) => {
+  const { data: holidays } = useSupabaseQuery<PublicHoliday[]>(
+    async () => {
+      let rangeStart: Date, rangeEnd: Date;
+      if (viewMode === "month") {
+        rangeStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+        rangeEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
+      } else {
+        rangeStart = currentWeekStart;
+        rangeEnd = addDays(currentWeekStart, 5);
+      }
+
       const supabase = createClient();
       const startStr = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-${String(rangeStart.getDate()).padStart(2, "0")}`;
       const endStr = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, "0")}-${String(rangeEnd.getDate()).padStart(2, "0")}`;
@@ -80,8 +89,9 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
         .lte("holiday_date", endStr)
         .order("holiday_date");
 
-      setHolidays(data ?? []);
+      return data ?? [];
     },
+    [viewMode, currentMonth, currentWeekStart],
     []
   );
 
@@ -111,17 +121,6 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
 
     loadStaticData();
   }, [studioId]);
-
-  useEffect(() => {
-    if (viewMode === "month") {
-      const gridStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
-      const gridEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
-      loadHolidays(gridStart, gridEnd);
-    } else {
-      const weekEnd = addDays(currentWeekStart, 5); // Mon–Sat
-      loadHolidays(currentWeekStart, weekEnd);
-    }
-  }, [viewMode, currentMonth, currentWeekStart, loadHolidays]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);

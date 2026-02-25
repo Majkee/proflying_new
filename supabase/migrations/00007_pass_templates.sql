@@ -55,11 +55,11 @@ CREATE POLICY "Managers and admins can update pass templates"
 
 INSERT INTO pass_templates (studio_id, name, duration_days, entries_total, default_price, sort_order) VALUES
   ('a0000000-0000-0000-0000-000000000001', 'Jednorazowe', 1, 1, 40, 0),
-  ('a0000000-0000-0000-0000-000000000001', 'Miesięczny 1x/tyg', 30, 4, 160, 1),
-  ('a0000000-0000-0000-0000-000000000001', 'Miesięczny 2x/tyg', 30, 8, 250, 2),
+  ('a0000000-0000-0000-0000-000000000001', 'Miesięczny 1x/tyg', 22, 4, 160, 1),
+  ('a0000000-0000-0000-0000-000000000001', 'Miesięczny 2x/tyg', 22, 8, 250, 2),
   ('a0000000-0000-0000-0000-000000000002', 'Jednorazowe', 1, 1, 40, 0),
-  ('a0000000-0000-0000-0000-000000000002', 'Miesięczny 1x/tyg', 30, 4, 160, 1),
-  ('a0000000-0000-0000-0000-000000000002', 'Miesięczny 2x/tyg', 30, 8, 250, 2);
+  ('a0000000-0000-0000-0000-000000000002', 'Miesięczny 1x/tyg', 22, 4, 160, 1),
+  ('a0000000-0000-0000-0000-000000000002', 'Miesięczny 2x/tyg', 22, 8, 250, 2);
 
 -- ============================================================
 -- 4. Add template_id column to passes

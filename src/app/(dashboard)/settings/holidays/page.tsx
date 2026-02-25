@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { ArrowLeft, Plus, CalendarOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useSupabaseQuery } from "@/lib/hooks/use-supabase-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +25,6 @@ import type { PublicHoliday } from "@/lib/types/database";
 const DAY_NAMES = ["Niedziela", "Poniedzialek", "Wtorek", "Sroda", "Czwartek", "Piatek", "Sobota"];
 
 export default function HolidaysSettingsPage() {
-  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [holidayDate, setHolidayDate] = useState("");
@@ -34,24 +33,22 @@ export default function HolidaysSettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
-  const loadHolidays = useCallback(async () => {
-    setLoading(true);
-    const supabase = createClient();
-    const startDate = `${filterYear}-01-01`;
-    const endDate = `${filterYear}-12-31`;
-    const { data } = await supabase
-      .from("public_holidays")
-      .select("*")
-      .gte("holiday_date", startDate)
-      .lte("holiday_date", endDate)
-      .order("holiday_date");
-    setHolidays(data ?? []);
-    setLoading(false);
-  }, [filterYear]);
-
-  useEffect(() => {
-    loadHolidays();
-  }, [loadHolidays]);
+  const { data: holidays, loading, refetch: loadHolidays } = useSupabaseQuery<PublicHoliday[]>(
+    async () => {
+      const supabase = createClient();
+      const startDate = `${filterYear}-01-01`;
+      const endDate = `${filterYear}-12-31`;
+      const { data } = await supabase
+        .from("public_holidays")
+        .select("*")
+        .gte("holiday_date", startDate)
+        .lte("holiday_date", endDate)
+        .order("holiday_date");
+      return data ?? [];
+    },
+    [filterYear],
+    []
+  );
 
   const openCreate = () => {
     setHolidayDate("");

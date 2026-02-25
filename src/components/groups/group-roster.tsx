@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Plus, Trash2, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useStudio } from "@/lib/hooks/use-studio";
+import { useSupabaseQuery } from "@/lib/hooks/use-supabase-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -28,29 +29,25 @@ interface GroupRosterProps {
 }
 
 export function GroupRoster({ groupId }: GroupRosterProps) {
-  const [members, setMembers] = useState<RosterMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: members, loading, refetch: loadMembers } = useSupabaseQuery<RosterMember[]>(
+    async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("group_memberships")
+        .select("id, student_id, student:students(id, full_name, phone)")
+        .eq("group_id", groupId)
+        .eq("is_active", true);
+
+      return (data as unknown as RosterMember[]) ?? [];
+    },
+    [groupId],
+    []
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [search, setSearch] = useState("");
   const { activeStudio } = useStudio();
-
-  const loadMembers = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("group_memberships")
-      .select("id, student_id, student:students(id, full_name, phone)")
-      .eq("group_id", groupId)
-      .eq("is_active", true);
-
-    setMembers((data as unknown as RosterMember[]) ?? []);
-    setLoading(false);
-  }, [groupId]);
-
-  useEffect(() => {
-    loadMembers();
-  }, [loadMembers]);
 
   const openAddDialog = async () => {
     if (!activeStudio) return;

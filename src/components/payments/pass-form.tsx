@@ -35,8 +35,7 @@ export function PassForm({ studentId, previousPass, onSuccess, onCancel }: PassF
   });
   const [validUntil, setValidUntil] = useState(() => {
     const d = new Date(validFrom);
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(d.getDate() - 1);
+    d.setDate(d.getDate() + 21);
     return d.toISOString().split("T")[0];
   });
   const [entriesTotal, setEntriesTotal] = useState(

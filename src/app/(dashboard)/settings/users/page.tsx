@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { ArrowLeft, Plus, User, Shield, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useSupabaseQuery } from "@/lib/hooks/use-supabase-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +36,22 @@ const roleIcons: Record<string, typeof Shield> = {
 };
 
 export default function UsersSettingsPage() {
-  const [profiles, setProfiles] = useState<(Profile & { studio_members?: StudioMember[] })[]>([]);
-  const [studios, setStudios] = useState<Studio[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: queryData, loading, refetch: loadData } = useSupabaseQuery(
+    async () => {
+      const supabase = createClient();
+      const [profilesRes, studiosRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("studios").select("*").eq("is_active", true).order("name"),
+      ]);
+      return {
+        profiles: (profilesRes.data ?? []) as (Profile & { studio_members?: StudioMember[] })[],
+        studios: (studiosRes.data ?? []) as Studio[],
+      };
+    },
+    [],
+    { profiles: [] as (Profile & { studio_members?: StudioMember[] })[], studios: [] as Studio[] }
+  );
+  const { profiles, studios } = queryData;
   const [createOpen, setCreateOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,21 +60,6 @@ export default function UsersSettingsPage() {
   const [studioId, setStudioId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const loadData = useCallback(async () => {
-    const supabase = createClient();
-    const [profilesRes, studiosRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("full_name"),
-      supabase.from("studios").select("*").eq("is_active", true).order("name"),
-    ]);
-    setProfiles(profilesRes.data ?? []);
-    setStudios(studiosRes.data ?? []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   const handleCreateUser = async () => {
     setSaving(true);

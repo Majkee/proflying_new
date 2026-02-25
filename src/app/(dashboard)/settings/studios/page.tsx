@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { ArrowLeft, Plus, Building2, Edit } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useSupabaseQuery } from "@/lib/hooks/use-supabase-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,25 +22,21 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import type { Studio } from "@/lib/types/database";
 
 export default function StudiosSettingsPage() {
-  const [studios, setStudios] = useState<Studio[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: studios, loading, refetch: loadStudios } = useSupabaseQuery<Studio[]>(
+    async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from("studios").select("*").order("name");
+      return data ?? [];
+    },
+    [],
+    []
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudio, setEditingStudio] = useState<Studio | null>(null);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const loadStudios = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase.from("studios").select("*").order("name");
-    setStudios(data ?? []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadStudios();
-  }, [loadStudios]);
 
   const openCreate = () => {
     setEditingStudio(null);
