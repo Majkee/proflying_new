@@ -21,6 +21,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     (item) => !item.roles || (userRole && item.roles.includes(userRole))
   );
 
+  const homeHref = userRole === "instructor" ? "/attendance" : "/dashboard";
+
   return (
     <>
       {/* Mobile overlay */}
@@ -37,7 +39,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         )}
       >
         <div className="flex h-14 items-center border-b px-4">
-          <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
+          <Link href={homeHref} className="flex items-center gap-2" onClick={onClose}>
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-sm font-bold text-primary-foreground">PF</span>
             </div>

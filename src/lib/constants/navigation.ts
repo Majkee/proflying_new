@@ -22,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Pulpit",
     href: "/dashboard",
     icon: LayoutDashboard,
+    roles: ["super_admin", "manager"],
   },
   {
     label: "Kalendarz",
@@ -38,16 +39,19 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Grafik",
     href: "/schedule",
     icon: Calendar,
+    roles: ["super_admin", "manager"],
   },
   {
     label: "Kursantki",
     href: "/students",
     icon: Users,
+    roles: ["super_admin", "manager"],
   },
   {
     label: "Grupy",
     href: "/groups",
     icon: Layers,
+    roles: ["super_admin", "manager"],
     mobileHidden: true,
   },
   {
@@ -75,6 +79,7 @@ export const MOBILE_MORE_ITEMS: NavItem[] = [
     label: "Grupy",
     href: "/groups",
     icon: Layers,
+    roles: ["super_admin", "manager"],
   },
   {
     label: "Platnosci",

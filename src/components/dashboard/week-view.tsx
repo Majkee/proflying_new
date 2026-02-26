@@ -16,6 +16,7 @@ interface WeekViewProps {
   groups: Group[];
   holidays: PublicHoliday[];
   students: Student[];
+  hideLinks?: boolean;
 }
 
 function timeToMinutes(time: string): number {
@@ -23,7 +24,7 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
-export function WeekView({ weekStart, groups, holidays, students }: WeekViewProps) {
+export function WeekView({ weekStart, groups, holidays, students, hideLinks }: WeekViewProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -141,17 +142,33 @@ export function WeekView({ weekStart, groups, holidays, students }: WeekViewProp
                 )}
                 {birthdays && birthdays.length > 0 && (
                   <div className="mt-0.5">
-                    {birthdays.map((b) => (
-                      <Link
-                        key={b.id}
-                        href={`/students/${b.id}`}
-                        className="flex items-center justify-center gap-0.5 text-[10px] text-pink-600 hover:text-pink-800 truncate"
-                        title={`${b.name} — ${b.age} ${b.age === 1 ? "rok" : b.age < 5 ? "lata" : "lat"}`}
-                      >
-                        <Cake className="h-2.5 w-2.5 flex-shrink-0" />
-                        <span className="truncate">{b.name.split(" ")[0]}</span>
-                      </Link>
-                    ))}
+                    {birthdays.map((b) => {
+                      const content = (
+                        <>
+                          <Cake className="h-2.5 w-2.5 flex-shrink-0" />
+                          <span className="truncate">{b.name.split(" ")[0]}</span>
+                        </>
+                      );
+                      const title = `${b.name} — ${b.age} ${b.age === 1 ? "rok" : b.age < 5 ? "lata" : "lat"}`;
+                      return hideLinks ? (
+                        <div
+                          key={b.id}
+                          className="flex items-center justify-center gap-0.5 text-[10px] text-pink-600 truncate"
+                          title={title}
+                        >
+                          {content}
+                        </div>
+                      ) : (
+                        <Link
+                          key={b.id}
+                          href={`/students/${b.id}`}
+                          className="flex items-center justify-center gap-0.5 text-[10px] text-pink-600 hover:text-pink-800 truncate"
+                          title={title}
+                        >
+                          {content}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -207,19 +224,15 @@ export function WeekView({ weekStart, groups, holidays, students }: WeekViewProp
                   const widthPercent = 100 / totalColumns;
                   const leftPercent = column * widthPercent;
 
-                  return (
-                    <Link
-                      key={group.id}
-                      href={`/groups/${group.id}`}
-                      className="absolute rounded-md bg-blue-100 border-l-2 border-l-blue-500 text-blue-800 hover:bg-blue-200 transition-colors overflow-hidden px-1.5 py-0.5"
-                      style={{
-                        top,
-                        height: Math.max(height, 20),
-                        left: `${leftPercent}%`,
-                        width: `calc(${widthPercent}% - 2px)`,
-                      }}
-                      title={`${group.code} — ${group.name}\n${formatTime(group.start_time)} – ${formatTime(group.end_time)}`}
-                    >
+                  const blockStyle = {
+                    top,
+                    height: Math.max(height, 20),
+                    left: `${leftPercent}%`,
+                    width: `calc(${widthPercent}% - 2px)`,
+                  };
+                  const blockTitle = `${group.code} — ${group.name}\n${formatTime(group.start_time)} – ${formatTime(group.end_time)}`;
+                  const blockChildren = (
+                    <>
                       <div className="text-[11px] font-semibold truncate leading-tight">
                         {group.code}
                       </div>
@@ -231,6 +244,27 @@ export function WeekView({ weekStart, groups, holidays, students }: WeekViewProp
                           {group.name}
                         </div>
                       )}
+                    </>
+                  );
+
+                  return hideLinks ? (
+                    <div
+                      key={group.id}
+                      className="absolute rounded-md bg-blue-100 border-l-2 border-l-blue-500 text-blue-800 overflow-hidden px-1.5 py-0.5"
+                      style={blockStyle}
+                      title={blockTitle}
+                    >
+                      {blockChildren}
+                    </div>
+                  ) : (
+                    <Link
+                      key={group.id}
+                      href={`/groups/${group.id}`}
+                      className="absolute rounded-md bg-blue-100 border-l-2 border-l-blue-500 text-blue-800 hover:bg-blue-200 transition-colors overflow-hidden px-1.5 py-0.5"
+                      style={blockStyle}
+                      title={blockTitle}
+                    >
+                      {blockChildren}
                     </Link>
                   );
                 })}

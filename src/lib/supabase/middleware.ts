@@ -44,11 +44,39 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If logged in and on login page, redirect to dashboard
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+  if (user) {
+    const pathname = request.nextUrl.pathname;
+
+    // Fetch role for logged-in users on dashboard routes (not /callback, not static)
+    const INSTRUCTOR_ALLOWED = ["/calendar", "/attendance"];
+    const needsRoleCheck =
+      pathname.startsWith("/login") ||
+      (!INSTRUCTOR_ALLOWED.some((p) => pathname.startsWith(p)) &&
+        !pathname.startsWith("/callback"));
+
+    if (needsRoleCheck) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      const role = profile?.role;
+
+      // Redirect logged-in users from /login
+      if (pathname.startsWith("/login")) {
+        const url = request.nextUrl.clone();
+        url.pathname = role === "instructor" ? "/attendance" : "/dashboard";
+        return NextResponse.redirect(url);
+      }
+
+      // Block instructors from restricted routes
+      if (role === "instructor") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/attendance";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

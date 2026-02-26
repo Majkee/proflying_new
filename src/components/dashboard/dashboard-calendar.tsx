@@ -56,7 +56,7 @@ interface DayData {
 
 type ViewMode = "month" | "week";
 
-export function DashboardCalendar({ studioId }: { studioId: string }) {
+export function DashboardCalendar({ studioId, hideLinks }: { studioId: string; hideLinks?: boolean }) {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
@@ -163,7 +163,7 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
             type: "class",
             label: `${formatTime(g.start_time)} ${g.code}`,
             sublabel: g.name,
-            href: `/groups/${g.id}`,
+            href: hideLinks ? undefined : `/groups/${g.id}`,
           });
         }
       }
@@ -181,14 +181,14 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
             type: "birthday",
             label: s.full_name,
             sublabel: age > 0 ? `${age} ${age === 1 ? "rok" : age < 5 ? "lata" : "lat"}` : undefined,
-            href: `/students/${s.id}`,
+            href: hideLinks ? undefined : `/students/${s.id}`,
           });
         }
       }
 
       return events;
     },
-    [holidays, groups, students]
+    [holidays, groups, students, hideLinks]
   );
 
   const handlePrev = () => {
@@ -289,6 +289,7 @@ export function DashboardCalendar({ studioId }: { studioId: string }) {
           groups={groups}
           holidays={holidays}
           students={students}
+          hideLinks={hideLinks}
         />
       ) : (
         <>

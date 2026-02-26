@@ -49,19 +49,25 @@ describe("Sidebar", () => {
     expect(screen.queryByText("Ustawienia")).not.toBeInTheDocument();
   });
 
-  it("hides Platnosci and Ustawienia for instructor", () => {
+  it("only shows Kalendarz and Obecnosc for instructor", () => {
     mockUserRole = "instructor";
     render(<Sidebar open={true} />);
-    expect(screen.getByText("Pulpit")).toBeInTheDocument();
+    expect(screen.getByText("Kalendarz")).toBeInTheDocument();
+    expect(screen.getByText("Obecnosc")).toBeInTheDocument();
+    expect(screen.queryByText("Pulpit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Grafik")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kursantki")).not.toBeInTheDocument();
+    expect(screen.queryByText("Grupy")).not.toBeInTheDocument();
     expect(screen.queryByText("Platnosci")).not.toBeInTheDocument();
     expect(screen.queryByText("Ustawienia")).not.toBeInTheDocument();
   });
 
-  it("shows common items for all roles", () => {
-    mockUserRole = "instructor";
+  it("shows common items for manager", () => {
+    mockUserRole = "manager";
     render(<Sidebar open={true} />);
     expect(screen.getByText("Pulpit")).toBeInTheDocument();
     expect(screen.getByText("Obecnosc")).toBeInTheDocument();
+    expect(screen.getByText("Kalendarz")).toBeInTheDocument();
     expect(screen.getByText("Grafik")).toBeInTheDocument();
     expect(screen.getByText("Kursantki")).toBeInTheDocument();
     expect(screen.getByText("Grupy")).toBeInTheDocument();
@@ -73,9 +79,16 @@ describe("Sidebar", () => {
     expect(pulpitLink?.className).toContain("text-primary");
   });
 
-  it("links Pulpit to /dashboard", () => {
+  it("links logo to /dashboard for super_admin", () => {
     render(<Sidebar open={true} />);
-    const link = screen.getByText("Pulpit").closest("a");
+    const link = screen.getByText("ProFlying").closest("a");
     expect(link).toHaveAttribute("href", "/dashboard");
+  });
+
+  it("links logo to /attendance for instructor", () => {
+    mockUserRole = "instructor";
+    render(<Sidebar open={true} />);
+    const link = screen.getByText("ProFlying").closest("a");
+    expect(link).toHaveAttribute("href", "/attendance");
   });
 });
